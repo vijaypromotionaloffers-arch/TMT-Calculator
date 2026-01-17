@@ -17,141 +17,307 @@
 
     <main class="container">
         <header class="app-header">
-            <div class="logo">
-                <div class="logo-icon">
-                    <span>M</span>
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <span>M</span>
+                    </div>
+                    <h1>TMT Calculator</h1>
                 </div>
-                <h1>TMT Calculator</h1>
+                <button id="info-btn" class="icon-btn" aria-label="How calculations work">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </button>
             </div>
             <p class="subtitle">Precision Steel Weight & Cost Estimation</p>
         </header>
 
-        <div class="layout-grid">
-            <!-- Left: Input Section -->
-            <section class="calculator-card glass-panel">
-                <div class="card-header">
-                    <h2>Add Item</h2>
-                </div>
-
-                <div class="input-group full-width">
-                    <label>Diameter (mm)</label>
-                    <div class="dia-selector">
-                        <label class="dia-chip"><input type="radio" name="diameter" value="8"
-                                checked><span>8</span></label>
-                        <label class="dia-chip"><input type="radio" name="diameter" value="10"><span>10</span></label>
-                        <label class="dia-chip"><input type="radio" name="diameter" value="12"><span>12</span></label>
-                        <label class="dia-chip"><input type="radio" name="diameter" value="16"><span>16</span></label>
-                        <label class="dia-chip"><input type="radio" name="diameter" value="20"><span>20</span></label>
-                        <label class="dia-chip"><input type="radio" name="diameter" value="25"><span>25</span></label>
-                        <label class="dia-chip"><input type="radio" name="diameter" value="32"><span>32</span></label>
-                    </div>
-                </div>
-
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>Weight (kg)</label>
-                        <input type="number" id="input-weight" placeholder="0" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label for="price">Price (₹/kg)</label>
-                        <input type="number" id="price" placeholder="0" step="0.1" inputmode="decimal">
-                    </div>
-                </div>
-
-                <!-- Quantity Inputs -->
-                <div id="quantity-inputs" class="input-row highlight-input-row" style="margin-bottom: 1.25rem;">
-                    <div class="input-group">
-                        <label>Bundles</label>
-                        <input type="number" id="input-bundles" placeholder="0" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label>Rods</label>
-                        <input type="number" id="input-rods" value="1" min="1" inputmode="decimal">
-                    </div>
-                </div>
-
-                <div class="live-preview">
-                    <div class="preview-item">
-                        <span class="label">Est. Weight</span>
-                        <span class="value" id="preview-weight">4.74 kg</span>
-                    </div>
-                    <div class="preview-item">
-                        <span class="label">Est. Cost</span>
-                        <span class="value" id="preview-cost">₹0</span>
-                    </div>
-                </div>
-
-                <button id="add-btn" class="primary-btn">
-                    <span class="btn-icon">+</span> Add to List
-                </button>
-            </section>
-
-            <!-- Right: List/Summary Section -->
-            <section class="summary-card glass-panel">
-                <div class="card-header">
-                    <h2>Estimation List</h2>
-                    <button id="clear-btn" class="text-btn">Clear All</button>
-                </div>
-
-                <div class="list-container">
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th class="text-right">Qty</th>
-                                <th class="text-right">Wgt (kg)</th>
-                                <th class="text-right">Cost</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="items-list">
-                            <!-- Items will be injected here -->
-                            <tr class="empty-state">
-                                <td colspan="5">No items added yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="totals-section">
-                    <div class="total-row">
-                        <span>Total Weight</span>
-                        <span class="total-value" id="total-weight">0 kg</span>
-                    </div>
-
-                    <div class="divider" style="margin: 1rem 0; border-top: 1px dashed #e2e8f0;"></div>
-
-                    <div class="gst-controls"
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <div class="gst-toggle-wrapper" style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="gst-toggle" style="width: auto;">
-                            <label for="gst-toggle" style="margin:0; cursor:pointer;">Add GST</label>
-                        </div>
-                        <div class="gst-rate-wrapper" style="display: flex; align-items: center; gap: 4px;">
-                            <input type="number" id="gst-rate" value="18"
-                                style="width: 50px; padding: 4px; border:1px solid #ddd; border-radius:4px; text-align:center;"
-                                min="0">
-                            <span style="font-size: 0.9rem; color: var(--text-muted);">%</span>
-                        </div>
-                    </div>
-
-                    <div class="total-row">
-                        <span>Subtotal</span>
-                        <span class="total-value" id="subtotal-cost">₹0</span>
-                    </div>
-                    <div class="total-row" id="gst-row" style="opacity: 0.5;">
-                        <span>GST Amount</span>
-                        <span class="total-value" id="gst-amount">₹0</span>
-                    </div>
-
-                    <div class="total-row large">
-                        <span>Grand Total</span>
-                        <span class="total-value highlight" id="total-cost">₹0</span>
-                    </div>
-                </div>
-            </section>
+        <!-- Tabs Navigation -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="estimator-tab">Cost Estimator</button>
+            <button class="tab-btn" data-tab="bbs-tab">BBS Calculator</button>
         </div>
+
+        <!-- Tab 1: Cost Estimator -->
+        <section id="estimator-tab" class="tab-content active">
+            <div class="layout-grid">
+                <!-- Left: Input Section -->
+                <section class="calculator-card glass-panel">
+                    <div class="card-header">
+                        <h2>Add Item</h2>
+                    </div>
+
+                    <div class="input-group full-width">
+                        <label>Diameter (mm)</label>
+                        <div class="dia-selector">
+                            <label class="dia-chip"><input type="radio" name="diameter" value="8"
+                                    checked><span>8</span></label>
+                            <label class="dia-chip"><input type="radio" name="diameter"
+                                    value="10"><span>10</span></label>
+                            <label class="dia-chip"><input type="radio" name="diameter"
+                                    value="12"><span>12</span></label>
+                            <label class="dia-chip"><input type="radio" name="diameter"
+                                    value="16"><span>16</span></label>
+                            <label class="dia-chip"><input type="radio" name="diameter"
+                                    value="20"><span>20</span></label>
+                            <label class="dia-chip"><input type="radio" name="diameter"
+                                    value="25"><span>25</span></label>
+                            <label class="dia-chip"><input type="radio" name="diameter"
+                                    value="32"><span>32</span></label>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Weight (kg)</label>
+                            <input type="number" id="input-weight" placeholder="0" inputmode="decimal">
+                        </div>
+                        <div class="input-group">
+                            <label for="price">Price (₹/kg)</label>
+                            <input type="number" id="price" placeholder="0" step="0.1" inputmode="decimal">
+                        </div>
+                    </div>
+
+                    <!-- Quantity Inputs -->
+                    <div id="quantity-inputs" class="input-row highlight-input-row" style="margin-bottom: 1.25rem;">
+                        <div class="input-group">
+                            <label>Bundles</label>
+                            <input type="number" id="input-bundles" placeholder="0" inputmode="decimal">
+                        </div>
+                        <div class="input-group">
+                            <label>Rods</label>
+                            <input type="number" id="input-rods" value="0" min="0" inputmode="decimal">
+                        </div>
+                    </div>
+
+                    <div class="live-preview">
+                        <div class="preview-item">
+                            <span class="label">Est. Weight</span>
+                            <span class="value" id="preview-weight">4.74 kg</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="label">Est. Cost</span>
+                            <span class="value" id="preview-cost">₹0</span>
+                        </div>
+                    </div>
+
+                    <button id="add-btn" class="primary-btn">
+                        <span class="btn-icon">+</span> Add to List
+                    </button>
+                </section>
+
+                <!-- Right: List/Summary Section -->
+                <section class="summary-card glass-panel">
+                    <div class="card-header">
+                        <h2>Estimation List</h2>
+                        <button id="clear-btn" class="text-btn">Clear All</button>
+                    </div>
+
+                    <div class="list-container">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-right">Qty</th>
+                                    <th class="text-right">Wgt (kg)</th>
+                                    <th class="text-right">Cost</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-list">
+                                <!-- Items will be injected here -->
+                                <tr class="empty-state">
+                                    <td colspan="5">No items added yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="totals-section">
+                        <div class="total-row">
+                            <span>Total Weight</span>
+                            <span class="total-value" id="total-weight">0 kg</span>
+                        </div>
+
+                        <div class="divider" style="margin: 1rem 0; border-top: 1px dashed #e2e8f0;"></div>
+
+                        <div class="gst-controls"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div class="gst-toggle-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="gst-toggle" style="width: auto;">
+                                <label for="gst-toggle" style="margin:0; cursor:pointer;">Add GST</label>
+                            </div>
+                            <div class="gst-rate-wrapper" style="display: flex; align-items: center; gap: 4px;">
+                                <input type="number" id="gst-rate" value="18"
+                                    style="width: 50px; padding: 4px; border:1px solid #ddd; border-radius:4px; text-align:center;"
+                                    min="0">
+                                <span style="font-size: 0.9rem; color: var(--text-muted);">%</span>
+                            </div>
+                        </div>
+
+                        <div class="total-row">
+                            <span>Subtotal</span>
+                            <span class="total-value" id="subtotal-cost">₹0</span>
+                        </div>
+                        <div class="total-row" id="gst-row" style="opacity: 0.5;">
+                            <span>GST Amount</span>
+                            <span class="total-value" id="gst-amount">₹0</span>
+                        </div>
+
+                        <div class="total-row large">
+                            <span>Grand Total</span>
+                            <span class="total-value highlight" id="total-cost">₹0</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <!-- Tab 2: BBS Calculator -->
+        <section id="bbs-tab" class="tab-content" style="display: none;">
+            <div class="layout-grid">
+                <!-- BBS Input -->
+                <!-- BBS Input -->
+                <section class="calculator-card glass-panel">
+                    <div class="card-header">
+                        <h2>Member Details</h2>
+                    </div>
+
+                    <!-- Member Identity -->
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Member Name</label>
+                            <input type="text" id="bbs-name" placeholder="e.g. C1, B2"
+                                style="text-transform: uppercase;">
+                        </div>
+                        <div class="input-group">
+                            <label>Member Type</label>
+                            <select id="bbs-type" class="shape-select pl-2">
+                                <option value="footing">Footing</option>
+                                <option value="column">Column</option>
+                                <option value="beam">Beam</option>
+                                <option value="slab">Slab</option>
+                                <option value="shape">Custom Shape</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Member Count -->
+                    <div class="input-group full-width">
+                        <label>No. of Members</label>
+                        <input type="number" id="member-count" value="1" min="1">
+                    </div>
+
+                    <div style="margin: 1.5rem 0; border-top: 1px solid rgba(0,0,0,0.05);"></div>
+
+                    <!-- Dynamic Inputs Container -->
+                    <div id="bbs-dynamic-inputs">
+                        <!-- Inputs injected by JS -->
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div class="live-preview" id="bbs-preview-box">
+                        <div class="preview-item">
+                            <span class="label">Total Steel</span>
+                            <span class="value" id="bbs-total-weight">0.00 kg</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="label">Items</span>
+                            <span class="value" id="bbs-item-count">0 Bars</span>
+                        </div>
+                    </div>
+
+                    <button id="bbs-add-btn" class="primary-btn">
+                        <span class="btn-icon">+</span> Add to Schedule
+                    </button>
+                </section>
+
+                <!-- BBS List -->
+                <section class="summary-card glass-panel">
+                    <div class="card-header">
+                        <h2>Bar Bending Schedule</h2>
+                        <button id="bbs-clear-btn" class="text-btn">Clear All</button>
+                    </div>
+
+                    <div class="list-container">
+                        <table class="items-table" id="bbs-table">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Shape</th>
+                                    <th>Dia</th>
+                                    <th>Cut Len</th>
+                                    <th>Qty</th>
+                                    <th>Weight</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="bbs-list">
+                                <tr class="empty-state">
+                                    <td colspan="6">Add shapes to calculations.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="totals-section">
+                        <div class="total-row large">
+                            <span>Total Steel Weight</span>
+                            <span class="total-value highlight" id="bbs-grand-total">0 kg</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
     </main>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal-backdrop">
+        <div class="modal-content glass-panel" style="max-width: 600px;">
+            <button id="close-modal" class="close-btn">&times;</button>
+            <h3>Calculation Formulas</h3>
+
+            <div class="info-section">
+                <h4>Unit Weight (Standard)</h4>
+                <div class="math-expr">
+                    Weight (kg) = <span class="fraction"><span class="top">D²</span><span
+                            class="bottom">162</span></span> &times; Length (m)
+                </div>
+            </div>
+
+            <div class="info-divider"></div>
+
+            <div class="info-section">
+                <h4>BBS Formulas (IS 456)</h4>
+                <table class="formula-table">
+                    <tr>
+                        <td><b>Cover</b></td>
+                        <td>Footing: 50mm | Column: 40mm <br> Beam: 25mm | Slab: 20mm</td>
+                    </tr>
+                    <tr>
+                        <td><b>Hooks</b></td>
+                        <td>Stirrups: 24d (Total for 2 hooks)<br>Anchorage: 10d</td>
+                    </tr>
+                    <tr>
+                        <td><b>Laps</b></td>
+                        <td>Compression: 24d | Tension: 50d (Used 50d)</td>
+                    </tr>
+                    <tr>
+                        <td><b>Cranks</b></td>
+                        <td>Slab Crank Length: 0.42 &times; D</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info-footer">
+                <p>Calculations are automatic based on member dimensions.</p>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
