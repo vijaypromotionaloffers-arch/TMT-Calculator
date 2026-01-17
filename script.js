@@ -7,6 +7,8 @@ const state = {
     weight: 0,
     gstEnabled: false,
     gstRate: 18,
+    bindingWireRate: 10,
+    laborRate: 0,
     items: [],
     bbsItems: [],
     bbsDia: 8,
@@ -79,7 +81,7 @@ const ROW_TEMPLATES = {
 
 const MEMBER_CONFIG = {
     footing: {
-        title: 'Footing (IS 456)',
+        title: 'Footing',
         onLoad: () => {
             addDynamicRow('spacingSet', 'footing-x-container', false, 12);
             addDynamicRow('spacingSet', 'footing-y-container', false, 12);
@@ -104,10 +106,15 @@ const MEMBER_CONFIG = {
             </div>
 
             <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="50"></div>
+            
+             <!-- Canvas Preview -->
+            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="shape-preview" width="280" height="110"></canvas>
+            </div>
         `
     },
     column: {
-        title: 'Column (IS 456)',
+        title: 'Column',
         onLoad: () => {
             addDynamicRow('nosSet', 'col-vert-container', false, 16);
         },
@@ -139,10 +146,15 @@ const MEMBER_CONFIG = {
             </div>
 
             <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="40"></div>
+            
+             <!-- Canvas Preview -->
+            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="shape-preview" width="280" height="110"></canvas>
+            </div>
         `
     },
     beam: {
-        title: 'Beam (IS 456)',
+        title: 'Beam',
         onLoad: () => {
             addDynamicRow('nosSet', 'beam-top-container', false, 12);
             addDynamicRow('nosSet', 'beam-bot-container', false, 16);
@@ -178,10 +190,15 @@ const MEMBER_CONFIG = {
             </div>
 
             <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="25"></div>
+
+             <!-- Canvas Preview -->
+            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="shape-preview" width="280" height="110"></canvas>
+            </div>
         `
     },
     slab: {
-        title: 'Slab (IS 456)',
+        title: 'Slab',
         onLoad: () => {
             addDynamicRow('spacingSet', 'slab-main-bot-container', false, 10);
             addDynamicRow('spacingSet', 'slab-dist-bot-container', false, 8);
@@ -226,6 +243,11 @@ const MEMBER_CONFIG = {
             </div>
 
              <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="20"></div>
+
+             <!-- Canvas Preview -->
+            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="shape-preview" width="280" height="110"></canvas>
+            </div>
         `
     },
     shape: {
@@ -240,6 +262,12 @@ const MEMBER_CONFIG = {
                     <option value="straight">Straight Bar</option>
                 </select>
             </div>
+            
+            <!-- Canvas Preview -->
+            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="shape-preview" width="280" height="110"></canvas>
+            </div>
+
             <div class="input-group full-width">
                  <label>Diameter</label>
                  <select class="bbs-mem-inp" data-key="customDia">${getDiaOptions(8)}</select>
@@ -285,6 +313,69 @@ function init() {
     state.gstEnabled = els.gstToggle.checked;
     state.gstRate = parseFloat(els.gstRate.value) || 0;
     updateGSTVisibility();
+    injectCostSettings();
+    injectProjectUI();
+}
+
+function injectCostSettings() {
+    const container = document.querySelector('.result-panel');
+    if (container) {
+        const div = document.createElement('div');
+        div.style.marginTop = '15px';
+        div.style.paddingTop = '15px';
+        div.style.borderTop = '1px solid #eee';
+        div.innerHTML = `
+            <h4 style="font-size:0.9em; margin-bottom:10px; color:#555;">Advanced Costs</h4>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Labor Rate (₹/ton)</label>
+                    <input type="number" id="labor-rate" placeholder="e.g. 5000" class="bbs-mem-inp" value="0">
+                </div>
+                 <div class="input-group">
+                    <label>Binding Wire (kg/ton)</label>
+                    <input type="number" id="wire-rate" placeholder="e.g. 10" class="bbs-mem-inp" value="10">
+                </div>
+            </div>
+        `;
+        container.insertBefore(div, els.gstRow.nextSibling);
+
+        document.getElementById('labor-rate').addEventListener('input', (e) => {
+            state.laborRate = parseFloat(e.target.value) || 0;
+            renderList();
+        });
+        document.getElementById('wire-rate').addEventListener('input', (e) => {
+            state.bindingWireRate = parseFloat(e.target.value) || 0;
+            renderList();
+        });
+    }
+
+    // Inject styles for print
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @media print {
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body * { visibility: hidden; }
+            #bbs-print-section, #bbs-print-section * { visibility: visible; }
+            #bbs-print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                box-shadow: none;
+                background: white;
+            }
+            #bbs-clear-btn, #bbs-export-actions, .action-btn, button { display: none !important; }
+            
+            table { width: 100%; border-collapse: collapse; border: 1px solid #ccc; font-size: 12px; }
+            th { background-color: #f3f4f6 !important; color: #111 !important; font-weight: bold; border: 1px solid #ccc; padding: 8px; }
+            td { border: 1px solid #ccc; padding: 6px; }
+            .group-header { background-color: #e5e7eb !important; font-weight: bold; }
+            .group-header td { background-color: #e5e7eb !important; }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 function attachListeners() {
@@ -439,11 +530,22 @@ function renderList() {
             subtotalCost += item.cost;
         });
     }
+
     els.totalWeight.textContent = formatNum(grandWeight) + ' kg';
     els.subtotalCost.textContent = '₹' + Math.round(subtotalCost).toLocaleString('en-IN');
+
+    // Cost Calc
+    const weightInTons = grandWeight / 1000;
+    const laborCost = weightInTons * state.laborRate;
+    let finalCost = subtotalCost + laborCost;
     const gstVal = state.gstEnabled ? subtotalCost * (state.gstRate / 100) : 0;
+    finalCost += gstVal;
+
     els.gstAmount.textContent = '₹' + Math.round(gstVal).toLocaleString('en-IN');
-    els.totalCost.textContent = '₹' + formatCost(subtotalCost + gstVal);
+
+    let extraText = '';
+    if (laborCost > 0) extraText += ` + Labor: ₹${formatNum(laborCost)}`;
+    els.totalCost.innerHTML = '₹' + formatCost(finalCost) + (extraText ? `<div style="font-size:0.6em; font-weight:400; color:#666;">(Incl. GST${extraText})</div>` : '');
 }
 
 function formatNum(n) { return n.toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
@@ -478,6 +580,12 @@ function setupBBSListeners() {
     if (clearBBSBtn) clearBBSBtn.addEventListener('click', () => { state.bbsItems = []; renderBBSList(); });
     const memCount = document.getElementById('member-count');
     if (memCount) memCount.addEventListener('input', calculateBBSPreview);
+
+
+    // Opt Listener
+    const btnOpt = document.getElementById('btn-generate-plan');
+    if (btnOpt) btnOpt.addEventListener('click', generateCutPlan);
+
     renderBBSInputs();
 }
 
@@ -534,9 +642,280 @@ function renderCustomShapeInputs() {
         i.addEventListener('input', calculateBBSPreview);
         i.addEventListener('dblclick', function () { this.select() });
     });
+    drawShape(shape, {});
 }
 
+// --- Visual & Export Logic ---
+
+function drawShape(shape, params) {
+    const canvas = document.getElementById('shape-preview');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#666';
+
+    const pad = 20;
+
+    if (shape === 'footing') {
+        const L = params.L || 1500;
+        const B = params.B || 1200;
+        const ratio = Math.min((w - 2 * pad) / L, (h - 2 * pad) / B);
+        const dw = L * ratio;
+        const dh = B * ratio;
+        const x = (w - dw) / 2;
+        const y = (h - dh) / 2;
+
+        ctx.strokeRect(x, y, dw, dh);
+
+        // Draw Grid
+        ctx.beginPath();
+        ctx.strokeStyle = '#ccc';
+        // X Bars (Vert lines)
+        for (let i = 1; i < 4; i++) { ctx.moveTo(x + (dw * i / 4), y); ctx.lineTo(x + (dw * i / 4), y + dh); }
+        // Y Bars (Horz lines)
+        for (let i = 1; i < 4; i++) { ctx.moveTo(x, y + (dh * i / 4)); ctx.lineTo(x + dw, y + (dh * i / 4)); }
+        ctx.stroke();
+
+        ctx.fillStyle = '#666';
+        ctx.fillText(`L: ${L}`, w / 2 - 15, y - 5);
+        ctx.fillText(`B: ${B}`, x + dw + 5, h / 2);
+    }
+    else if (shape === 'column' || shape === 'beam') {
+        const B = params.b || 300;
+        const D = params.D || 450;
+        const ratio = Math.min((w - 40) / B, (h - 40) / D);
+        const dw = B * ratio;
+        const dh = D * ratio;
+        const x = (w - dw) / 2;
+        const y = (h - dh) / 2;
+
+        // Concrete Face
+        ctx.strokeRect(x, y, dw, dh);
+
+        // Ring
+        const cover = (params.cover || 40) * ratio;
+        ctx.strokeStyle = 'red';
+        ctx.strokeRect(x + cover, y + cover, dw - 2 * cover, dh - 2 * cover);
+
+        // Bars (Dots)
+        ctx.fillStyle = '#3b82f6';
+        const r = 3;
+        // Corners
+        ctx.beginPath(); ctx.arc(x + cover + r, y + cover + r, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + dw - cover - r, y + cover + r, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + dw - cover - r, y + dh - cover - r, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + cover + r, y + dh - cover - r, r, 0, 2 * Math.PI); ctx.fill();
+
+        ctx.fillStyle = '#666';
+        ctx.fillText(`${B}x${D}`, w / 2 - 15, h - 5);
+    }
+    else if (shape === 'slab') {
+        const Lx = params.Lx || 3000;
+        const Ly = params.Ly || 4000;
+        const ratio = Math.min((w - 30) / Lx, (h - 30) / Ly); // Swapped visual for better fit usually, but keep simple
+        const dw = Lx * ratio;
+        const dh = Ly * ratio;
+        const x = (w - dw) / 2;
+        const y = (h - dh) / 2;
+
+        ctx.strokeRect(x, y, dw, dh);
+        ctx.beginPath();
+        ctx.strokeStyle = '#ddd';
+        ctx.moveTo(x, y); ctx.lineTo(x + dw, y + dh);
+        ctx.moveTo(x + dw, y); ctx.lineTo(x, y + dh);
+        ctx.stroke();
+
+        ctx.fillStyle = '#666';
+        ctx.fillText(`Lx: ${Lx}`, w / 2 - 20, y - 5);
+        ctx.fillText(`Ly: ${Ly}`, x + dw + 5, h / 2);
+    }
+    else if (shape === 'stirrup-rect') {
+        const rw = w - 2 * pad;
+        const rh = h - 2 * pad;
+        ctx.strokeRect(pad, pad, rw, rh);
+        ctx.beginPath();
+        ctx.moveTo(pad + rw / 2, pad);
+        ctx.lineTo(pad + rw / 2 + 10, pad + 10);
+        ctx.moveTo(pad + rw / 2, pad);
+        ctx.lineTo(pad + rw / 2 - 10, pad + 10);
+        ctx.stroke();
+        ctx.fillText(`A: ${params.a || 'A'}`, w / 2 - 10, h - 5);
+        ctx.fillText(`B: ${params.b || 'B'}`, 5, h / 2);
+    }
+    else if (shape === 'stirrup-circ') {
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, (h / 2) - pad, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillText(`D: ${params.d_member || 'D'}`, w / 2 - 10, h / 2 + 5);
+    }
+    else if (shape === 'l-bar') {
+        ctx.beginPath();
+        ctx.moveTo(pad + 20, pad);
+        ctx.lineTo(pad + 20, h - pad); // Vert
+        ctx.lineTo(w - pad, h - pad); // Horz
+        ctx.stroke();
+        ctx.fillText(`A: ${params.a || 'A'}`, pad, h / 2);
+        ctx.fillText(`B: ${params.b || 'B'}`, w / 2, h - 5);
+    }
+    else if (shape === 'straight') {
+        ctx.beginPath();
+        ctx.moveTo(pad, h / 2);
+        ctx.lineTo(w - pad, h / 2);
+        ctx.stroke();
+        ctx.fillText(`L: ${params.len || 'Len'}`, w / 2 - 10, h / 2 - 10);
+    }
+}
+
+function printBBS() {
+    window.print();
+}
+
+function exportCSV() {
+    if (state.bbsItems.length === 0) { alert('No data to export'); return; }
+    // BOM for UTF-8 + sep=, for Excel to auto-detect columns
+    let csv = '\uFEFFsep=,\nMember,Type,Shape,Dia (mm),Cut Len (m),Qty,Weight (kg)\n';
+
+    // Sort items by Group to match display
+    const groups = {};
+    state.bbsItems.forEach((item) => {
+        const key = `${item.memberName}-${item.memberType}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+    });
+
+    Object.keys(groups).forEach(grpKey => {
+        groups[grpKey].forEach(item => {
+            // Quote strings to handle commas in names if any
+            csv += `"${item.memberName}","${item.memberType}","${item.shape}",${item.dia},${item.cutLen.toFixed(3)},${item.qty},${item.weight.toFixed(2)}\n`;
+        });
+    });
+
+    // Add Summary
+    const totalWt = state.bbsItems.reduce((acc, i) => acc + i.weight, 0);
+    const wireKg = (totalWt / 1000) * state.bindingWireRate;
+    csv += `\n,,,,,TOTAL STEEL,${totalWt.toFixed(2)}\n`;
+    csv += `\n,,,,,BINDING WIRE,${wireKg.toFixed(2)}\n`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bbs_schedule_${Date.now()}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// --- Project Management ---
+const PROJECT_STORAGE_KEY = 'bbs_projects';
+
+function getProjects() {
+    return JSON.parse(localStorage.getItem(PROJECT_STORAGE_KEY) || '{}');
+}
+
+function saveProject() {
+    const name = document.getElementById('project-name-inp').value.trim();
+    if (!name) { alert('Please enter a project name'); return; }
+    const projects = getProjects();
+    if (projects[name] && !confirm(`Overwrite existing project "${name}"?`)) return;
+
+    projects[name] = {
+        date: Date.now(),
+        items: state.bbsItems
+    };
+    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects));
+    renderProjectList();
+    alert('Project saved successfully!');
+}
+
+function loadProject(name, append = false) {
+    if (!append && state.bbsItems.length > 0 && !confirm('Replace current list? Cancel to stop.')) return;
+
+    const projects = getProjects();
+    if (projects[name]) {
+        if (append) {
+            state.bbsItems = [...state.bbsItems, ...(projects[name].items || [])];
+        } else {
+            state.bbsItems = projects[name].items || [];
+        }
+        renderBBSList();
+        document.getElementById('project-modal').classList.remove('active');
+    }
+}
+
+function deleteProject(name) {
+    if (!confirm(`Delete project "${name}" forever?`)) return;
+    const projects = getProjects();
+    delete projects[name];
+    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects));
+    renderProjectList();
+}
+
+function renderProjectList() {
+    const list = document.getElementById('saved-projects-list');
+    if (!list) return;
+    const projects = getProjects();
+    const names = Object.keys(projects).sort();
+
+    if (names.length === 0) {
+        list.innerHTML = '<div style="color:#888; text-align:center; padding:10px;">No saved projects</div>';
+        return;
+    }
+
+    list.innerHTML = names.map(name => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
+            <span style="font-weight:600; font-size:0.95em; color:#333;">${name}</span>
+            <div style="display:flex; gap:5px;">
+                <button class="btn-outline-sm" onclick="loadProject('${name}', false)" title="Replace Current List">Load</button>
+                <button class="btn-outline-sm" onclick="loadProject('${name}', true)" title="Add to Current List">+ Add</button>
+                <button class="action-btn text-red" onclick="deleteProject('${name}')" style="margin-left:5px;">&times;</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openProjectModal() {
+    const modal = document.getElementById('project-modal');
+    modal.classList.add('active');
+    renderProjectList();
+}
+
+function injectProjectUI() {
+    // Inject Modal
+    if (!document.getElementById('project-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'project-modal';
+        modal.className = 'modal-backdrop';
+        modal.innerHTML = `
+            <div class="modal-content glass-panel" style="max-width: 500px; width:90%;">
+                <button onclick="document.getElementById('project-modal').classList.remove('active')" class="close-btn">&times;</button>
+                <h3 style="margin-bottom:15px;">Project Management</h3>
+                
+                <div style="background:#f9fafb; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #eee;">
+                    <label style="font-weight:600; display:block; margin-bottom:8px; color:#4b5563;">Save Current Project</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="project-name-inp" class="bbs-mem-inp" placeholder="Project Name" style="flex:1;">
+                        <button class="primary-btn" style="padding:0 20px;" onclick="saveProject()">Save</button>
+                    </div>
+                </div>
+                
+                <label style="font-weight:600; display:block; margin-bottom:10px; color:#4b5563;">Saved Projects</label>
+                <div id="saved-projects-list" style="max-height:300px; overflow-y:auto; border:1px solid #eee; border-radius:4px; background:white;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+}
+window.saveProject = saveProject; window.loadProject = loadProject; window.deleteProject = deleteProject;
+
 function collectSets(selector) {
+    // Implementation same as before
     const sets = [];
     document.querySelectorAll(selector).forEach(row => {
         const dia = parseFloat(row.querySelector('.set-dia')?.value) || 0;
@@ -544,16 +923,12 @@ function collectSets(selector) {
         const noInp = row.querySelector('.set-no');
         const aInp = row.querySelector('.set-a');
         const bInp = row.querySelector('.set-b');
-
         const item = { dia };
         if (spaceInp) item.space = parseFloat(spaceInp.value) || 0;
         if (noInp) item.no = parseFloat(noInp.value) || 0;
         if (aInp) item.a = parseFloat(aInp.value) || 0;
         if (bInp) item.b = parseFloat(bInp.value) || 0;
-
-        if (dia > 0) {
-            if (item.no > 0 || item.space > 0) sets.push(item);
-        }
+        if (dia > 0) { if (item.no > 0 || item.space > 0) sets.push(item); }
     });
     return sets;
 }
@@ -585,6 +960,7 @@ function calculateBBSPreview() {
     }
     if (type === 'shape') {
         document.querySelectorAll('.custom-dim').forEach(i => inputs[i.dataset.key] = parseFloat(i.value) || 0);
+        drawShape(document.getElementById('bbs-shape-custom').value, inputs);
     }
 
     const items = generateMemberItems(type, inputs, memCount);
@@ -595,6 +971,12 @@ function calculateBBSPreview() {
     const countEl = document.getElementById('bbs-item-count');
     if (wtEl) wtEl.textContent = formatNum(totalWt) + ' kg';
     if (countEl) countEl.textContent = items.length + ' Item(s)';
+
+    // Trigger Draw
+    if (type !== 'shape') { // Custom shape draws itself inside renderCustomShapeInputs or manually
+        drawShape(type, inputs);
+    }
+
     return items;
 }
 
@@ -604,7 +986,6 @@ function generateMemberItems(type, inp, count) {
         const wt = (dia * dia / 162) * (cutLen / 1000) * no * count;
         if (wt > 0) items.push({ name, shape, dia, cutLen: cutLen / 1000, qty: no * count, weight: wt });
     };
-
     if (type === 'footing') {
         const bob = Math.max(0, inp.D - 2 * inp.cover);
         if (inp.xSets) {
@@ -621,7 +1002,6 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Footing Y Set ${idx + 1}`, 'U-Bar', set.dia, lenY, noY);
             });
         }
-
     } else if (type === 'column') {
         if (inp.vertSets) {
             inp.vertSets.forEach((set, idx) => {
@@ -629,13 +1009,11 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Vert Set ${idx + 1}`, 'Straight', set.dia, inp.H + lap, set.no);
             });
         }
-
         const a = Math.max(0, inp.b - 2 * inp.cover);
         const b = Math.max(0, inp.D - 2 * inp.cover);
         const ringLen = 2 * (a + b) + 24 * inp.ringDia;
         const ringNo = Math.floor(inp.H / inp.ringSpace) + 1;
         pushItem('Rings (Outer)', 'Rect Ring', inp.ringDia, ringLen, ringNo);
-
         if (inp.innerSets) {
             inp.innerSets.forEach((set, idx) => {
                 let innerLen = 0;
@@ -650,7 +1028,6 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`${typeStr} ${idx + 1}`, 'Custom', set.dia, innerLen, innerNo);
             });
         }
-
     } else if (type === 'beam') {
         const effLen = inp.L - 2 * inp.cover;
         if (inp.topSets) {
@@ -665,13 +1042,11 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Bot Set ${idx + 1}`, 'Str+Hook', set.dia, effLen + hook, set.no);
             });
         }
-
         const a = Math.max(0, inp.b - 2 * inp.cover);
         const b = Math.max(0, inp.D - 2 * inp.cover);
         const ringLen = 2 * (a + b) + 24 * inp.ringDia;
         const ringNo = Math.floor(inp.L / inp.ringSpace) + 1;
         pushItem('Stirrups', 'Rect Ring', inp.ringDia, ringLen, ringNo);
-
         if (inp.innerSets) {
             inp.innerSets.forEach((set, idx) => {
                 const innerLen = 2 * (set.a + (set.b || 0)) + 24 * set.dia;
@@ -679,12 +1054,8 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Inner Ring ${idx + 1}`, 'Rect Ring', set.dia, innerLen, innerNo);
             });
         }
-
     } else if (type === 'slab') {
-        // Main Bars (Short Span)
         const crankAddRatio = 0.42;
-
-        // Bottom
         if (inp.mainBotSets) {
             inp.mainBotSets.forEach((set, idx) => {
                 const d_crank = Math.max(0, inp.D - 2 * inp.cover - set.dia);
@@ -694,18 +1065,13 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Main Bot (Short) Set ${idx + 1}`, 'Cranked', set.dia, cutMain, noMain);
             });
         }
-
-        // Top
         if (inp.mainTopSets) {
             inp.mainTopSets.forEach((set, idx) => {
-                const cutMain = inp.Lx - 2 * inp.cover + (2 * 10 * set.dia); // Usually straight
+                const cutMain = inp.Lx - 2 * inp.cover + (2 * 10 * set.dia);
                 const noMain = Math.floor(inp.Ly / set.space) + 1;
                 pushItem(`Main Top (Short) Set ${idx + 1}`, 'Straight', set.dia, cutMain, noMain);
             });
         }
-
-        // Distribution Bars (Long Span)
-        // Bottom
         if (inp.distBotSets) {
             inp.distBotSets.forEach((set, idx) => {
                 const cutDist = inp.Ly - 2 * inp.cover + (2 * 10 * set.dia);
@@ -713,8 +1079,6 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Dist Bot (Long) Set ${idx + 1}`, 'Straight', set.dia, cutDist, noDist);
             });
         }
-
-        // Top
         if (inp.distTopSets) {
             inp.distTopSets.forEach((set, idx) => {
                 const cutDist = inp.Ly - 2 * inp.cover + (2 * 10 * set.dia);
@@ -722,7 +1086,6 @@ function generateMemberItems(type, inp, count) {
                 pushItem(`Dist Top (Long) Set ${idx + 1}`, 'Straight', set.dia, cutDist, noDist);
             });
         }
-
     } else if (type === 'shape') {
         const shape = inp.customShape;
         const d = inp.customDia;
@@ -734,7 +1097,6 @@ function generateMemberItems(type, inp, count) {
         else if (shape === 'straight') cut = inp.len;
         pushItem('Custom', BBS_SHAPE_CONFIG[shape].name, d, cut, q);
     }
-
     return items;
 }
 
@@ -753,21 +1115,36 @@ function renderBBSList() {
     const grandTotalEl = document.getElementById('bbs-grand-total');
     if (!list || !grandTotalEl) return;
     list.innerHTML = ''; let grandTotal = 0;
+
     if (state.bbsItems.length === 0) {
         list.innerHTML = '<tr class="empty-state"><td colspan="7">No items added yet.</td></tr>';
-        grandTotalEl.textContent = '0 kg'; return;
+        grandTotalEl.textContent = '0 kg';
+        return;
     }
+
     const groups = {};
     state.bbsItems.forEach((item, index) => {
-        if (!groups[item.memberName]) groups[item.memberName] = { name: item.memberName, type: item.memberType, items: [], weight: 0 };
-        groups[item.memberName].items.push({ ...item, originalIndex: index });
-        groups[item.memberName].weight += item.weight;
+        const key = `${item.memberName}-${item.memberType}`;
+        if (!groups[key]) groups[key] = { name: item.memberName, type: item.memberType, items: [], weight: 0 };
+        groups[key].items.push({ ...item, originalIndex: index });
+        groups[key].weight += item.weight;
         grandTotal += item.weight;
     });
+
     Object.values(groups).forEach(group => {
         const headerRow = document.createElement('tr');
         headerRow.className = 'group-header'; headerRow.style.background = 'rgba(0,0,0,0.03)';
-        headerRow.innerHTML = `<td colspan="5" style="column-span:all;font-weight:700;color:var(--primary-color);">${group.name} <span style="font-size:0.8em;color:#666;font-weight:400;">(${MEMBER_CONFIG[group.type]?.title || group.type})</span></td><td style="font-weight:700;">${formatNum(group.weight)}</td><td><button class="action-btn text-red" onclick="removeBBSGroup('${group.name}')" title="Delete Member">&times;</button></td>`;
+
+        let displayTitle = '';
+        const typeTitle = MEMBER_CONFIG[group.type]?.title || group.type;
+        // Smart Header: If name is generic 'MEM', show the Type Title (e.g. 'Footing') as the main header
+        if (group.name === 'MEM') {
+            displayTitle = typeTitle;
+        } else {
+            displayTitle = `${group.name} <span style="font-size:0.8em;color:#666;font-weight:400;">(${typeTitle})</span>`;
+        }
+
+        headerRow.innerHTML = `<td colspan="5" style="column-span:all;font-weight:700;color:var(--primary-color);">${displayTitle}</td><td style="font-weight:700;">${formatNum(group.weight)}</td><td><button class="action-btn text-red" onclick="removeBBSGroup('${group.name}', '${group.type}')" title="Delete Member">&times;</button></td>`;
         list.appendChild(headerRow);
         group.items.forEach(item => {
             const row = document.createElement('tr');
@@ -775,9 +1152,139 @@ function renderBBSList() {
             list.appendChild(row);
         });
     });
+
     grandTotalEl.textContent = formatNum(grandTotal) + ' kg';
+
+    // Wire
+    let footer = document.getElementById('bbs-footer-extras');
+    if (!footer) {
+        footer = document.createElement('div');
+        footer.id = 'bbs-footer-extras';
+        footer.style.padding = '10px 0';
+        footer.style.fontSize = '0.9em';
+        footer.style.color = '#555';
+        footer.style.textAlign = 'right';
+        list.parentElement.after(footer);
+    }
+    const wireKg = (grandTotal / 1000) * state.bindingWireRate;
+    footer.innerHTML = `Binding Wire Required (~${state.bindingWireRate}kg/T): <b>${formatNum(wireKg)} kg</b>`;
+
+    // Inject Export Buttons if not present
+    let exportDiv = document.getElementById('bbs-export-actions');
+    if (!exportDiv) {
+        exportDiv = document.createElement('div');
+        exportDiv.id = 'bbs-export-actions';
+        exportDiv.style.marginTop = '15px';
+        exportDiv.style.display = 'flex';
+        exportDiv.style.gap = '10px';
+        exportDiv.style.justifyContent = 'flex-end';
+
+        exportDiv.innerHTML = `
+            <button class="btn" style="background:#4b5563;" onclick="printBBS()">Print PDF</button>
+            <button class="btn" style="background:#047857;" onclick="exportCSV()">Export Excel</button>
+            <button class="btn" style="background:#2563eb;" onclick="openProjectModal()">Projects</button>
+        `;
+        footer.after(exportDiv);
+    }
 }
+window.printBBS = printBBS;
+window.exportCSV = exportCSV;
+window.openProjectModal = openProjectModal;
+
 function removeBBSItem(index) { state.bbsItems.splice(index, 1); renderBBSList(); }
-function removeBBSGroup(memName) { if (!confirm(`Delete all for "${memName}"?`)) return; state.bbsItems = state.bbsItems.filter(i => i.memberName !== memName); renderBBSList(); }
+function removeBBSGroup(memName, memType) {
+    if (!confirm(`Delete all for "${memName === 'MEM' ? (MEMBER_CONFIG[memType]?.title || memType) : memName}"?`)) return;
+    state.bbsItems = state.bbsItems.filter(i => !(i.memberName === memName && i.memberType === memType));
+    renderBBSList();
+}
 window.removeBBSItem = removeBBSItem; window.removeBBSGroup = removeBBSGroup;
 setupBBSListeners(); init();
+
+// --- Optimization Logic ---
+
+function generateCutPlan() {
+    const container = document.getElementById('optimization-results');
+    if (state.bbsItems.length === 0) {
+        container.innerHTML = '<div class="empty-state">No items in BBS to optimize.</div>';
+        return;
+    }
+
+    // 1. Group by Diameter
+    const stockLen = 12; // meters
+    const diaGroups = {};
+    state.bbsItems.forEach(item => {
+        if (!diaGroups[item.dia]) diaGroups[item.dia] = [];
+        // Flatten qty: if qty is 4, add 4 separate items of cutLen
+        for (let i = 0; i < item.qty; i++) {
+            diaGroups[item.dia].push(item.cutLen);
+        }
+    });
+
+    // 2. Process Each Diameter
+    let html = '';
+    const sortedDias = Object.keys(diaGroups).sort((a, b) => b - a); // Process thickest first usually
+
+    sortedDias.forEach(dia => {
+        const pieces = diaGroups[dia].sort((a, b) => b - a); // Descending length
+        const bars = optimizeStock(stockLen, pieces);
+
+        const totalStock = bars.length * stockLen;
+        const usedLen = pieces.reduce((a, b) => a + b, 0);
+        const waste = totalStock - usedLen;
+        const wastePct = (waste / totalStock) * 100;
+
+        html += `
+            <div style="background:white; border:1px solid #e5e7eb; border-radius:8px; padding:15px; margin-bottom:20px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                    <h3 style="margin:0; font-size:1.1em; color:#1f2937;">${dia}mm Diameter</h3>
+                    <div style="text-align:right; font-size:0.9em; line-height:1.4;">
+                        <div><b>${bars.length}</b> bars (12m) required</div>
+                        <div style="color:${wastePct < 5 ? '#059669' : '#d97706'}">Waste: ${waste.toFixed(2)}m (${wastePct.toFixed(1)}%)</div>
+                    </div>
+                </div>
+                
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${bars.map((bar, idx) => {
+            return `
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="font-size:0.85em; color:#666; width:60px;">Bar ${idx + 1}</div>
+                                <div style="flex:1; height:24px; background:#f3f4f6; border-radius:4px; overflow:hidden; display:flex;">
+                                    ${bar.cuts.map(c => `
+                                        <div style="width:${(c / 12) * 100}%; background:#3b82f6; border-right:1px solid rgba(255,255,255,0.5); color:white; font-size:10px; display:flex; align-items:center; justify-content:center; overflow:hidden;" title="${c.toFixed(2)}m">
+                                            ${c.toFixed(2)}
+                                        </div>
+                                    `).join('')}
+                                    <div style="flex:1; background:#fee2e2; display:flex; align-items:center; justify-content:center; color:#991b1b; font-size:10px;" title="Waste">
+                                        waste
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+        }).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function optimizeStock(stockLen, pieces) {
+    // First Fit Decreasing Algorithm
+    // bars = [ { remaining: 12, cuts: [] } ]
+    const bars = [];
+
+    pieces.forEach(p => {
+        // Try to fit in existing bar
+        const bestBar = bars.find(b => b.remaining >= p);
+        if (bestBar) {
+            bestBar.remaining -= p;
+            bestBar.cuts.push(p);
+        } else {
+            // New Bar
+            bars.push({ remaining: stockLen - p, cuts: [p] });
+        }
+    });
+    return bars;
+}
+

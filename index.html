@@ -40,6 +40,7 @@
         <div class="tabs-nav">
             <button class="tab-btn active" data-tab="estimator-tab">Cost Estimator</button>
             <button class="tab-btn" data-tab="bbs-tab">BBS Calculator</button>
+            <button class="tab-btn" data-tab="optimize-tab">Cut Plan</button>
         </div>
 
         <!-- Tab 1: Cost Estimator -->
@@ -237,7 +238,7 @@
                 </section>
 
                 <!-- BBS List -->
-                <section class="summary-card glass-panel">
+                <section class="summary-card glass-panel" id="bbs-print-section">
                     <div class="card-header">
                         <h2>Bar Bending Schedule</h2>
                         <button id="bbs-clear-btn" class="text-btn">Clear All</button>
@@ -274,6 +275,42 @@
             </div>
         </section>
     </main>
+
+    <!-- Tab 3: Optimization -->
+    <section id="optimize-tab" class="tab-content" style="display: none;">
+        <div class="calculator-card glass-panel" style="max-width: 800px; margin: 0 auto;">
+            <div class="card-header">
+                <h2>Bar Cutting Optimization</h2>
+                <span
+                    style="font-size:0.9em; color:#fff; opacity:0.8; background:var(--primary-color); padding:2px 8px; border-radius:12px;">Beta</span>
+            </div>
+
+            <div
+                style="background:#f0f9ff; border:1px solid #bae6fd; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <p style="color:#0369a1; font-size:0.95em;">
+                    <b>How it works:</b> This tool calculates the most efficient way to cut the required lengths from
+                    standard <b>12m</b> stock bars to minimize waste.
+                    It uses data from your "BBS Calculator" tab.
+                </p>
+            </div>
+
+            <div class="input-group">
+                <label>Stock Bar Length (meters)</label>
+                <input type="number" id="opt-stock-len" value="12" disabled style="background:#f3f4f6; color:#666;">
+            </div>
+
+            <button id="btn-generate-plan" class="primary-btn" style="margin-top:10px;">
+                <span class="btn-icon">⚡</span> Generate Cut Plan
+            </button>
+
+            <div id="optimization-results" style="margin-top:25px;">
+                <!-- Results injected here -->
+                <div class="empty-state">
+                    Add items to BBS first, then click Generate.
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Info Modal -->
     <div id="info-modal" class="modal-backdrop">
