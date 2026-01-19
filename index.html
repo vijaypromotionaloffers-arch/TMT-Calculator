@@ -239,9 +239,14 @@
 
                 <!-- BBS List -->
                 <section class="summary-card glass-panel" id="bbs-print-section">
-                    <div class="card-header">
+                    <div class="card-header" style="flex-wrap:wrap; gap:10px;">
                         <h2>Bar Bending Schedule</h2>
-                        <button id="bbs-clear-btn" class="text-btn">Clear All</button>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <button id="btn-project" class="btn-outline-sm" title="Load/Save Projects">📂 Projects</button>
+                            <button id="btn-excel" class="btn-outline-sm" title="Export to Excel">📊 Excel</button>
+                            <button id="btn-print" class="btn-outline-sm" title="Print View">🖨️ Print</button>
+                            <button id="bbs-clear-btn" class="text-btn" style="white-space:nowrap;">Clear</button>
+                        </div>
                     </div>
 
                     <div class="list-container">

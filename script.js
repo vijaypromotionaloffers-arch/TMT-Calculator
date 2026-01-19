@@ -586,6 +586,15 @@ function setupBBSListeners() {
     const btnOpt = document.getElementById('btn-generate-plan');
     if (btnOpt) btnOpt.addEventListener('click', generateCutPlan);
 
+    // New Static Actions
+    const btnProj = document.getElementById('btn-project');
+    const btnExcel = document.getElementById('btn-excel');
+    const btnPrint = document.getElementById('btn-print');
+
+    if (btnProj) btnProj.addEventListener('click', openProjectModal);
+    if (btnExcel) btnExcel.addEventListener('click', exportCSV);
+    if (btnPrint) btnPrint.addEventListener('click', printBBS);
+
     renderBBSInputs();
 }
 
@@ -654,14 +663,25 @@ function drawShape(shape, params) {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.font = '12px sans-serif';
-    ctx.fillStyle = '#666';
+    ctx.font = '10px sans-serif';
 
+    // Config
+    const colorConc = '#e5e7eb'; // concrete fill
+    const colorConcStroke = '#9ca3af'; // concrete outline
+    const colorStirrup = '#ef4444'; // red stirrup
+    const colorBar = '#3b82f6'; // blue bars
+    const colorInner = '#f59e0b'; // orange inner links
     const pad = 20;
+
+    function drawBar(cx, cy, d) {
+        ctx.beginPath();
+        ctx.fillStyle = colorBar;
+        const r = Math.max(2, d / 2 * 0.4); // Scale down visual radius
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.fill();
+    }
 
     if (shape === 'footing') {
         const L = params.L || 1500;
@@ -672,54 +692,220 @@ function drawShape(shape, params) {
         const x = (w - dw) / 2;
         const y = (h - dh) / 2;
 
+        ctx.strokeStyle = colorConcStroke;
         ctx.strokeRect(x, y, dw, dh);
 
         // Draw Grid
         ctx.beginPath();
         ctx.strokeStyle = '#ccc';
         // X Bars (Vert lines)
-        for (let i = 1; i < 4; i++) { ctx.moveTo(x + (dw * i / 4), y); ctx.lineTo(x + (dw * i / 4), y + dh); }
+        if (params.xSets) {
+            // simplified grid visual
+            const count = 5;
+            for (let i = 1; i < count; i++) { ctx.moveTo(x + (dw * i / count), y); ctx.lineTo(x + (dw * i / count), y + dh); }
+        }
         // Y Bars (Horz lines)
-        for (let i = 1; i < 4; i++) { ctx.moveTo(x, y + (dh * i / 4)); ctx.lineTo(x + dw, y + (dh * i / 4)); }
+        if (params.ySets) {
+            const count = 5;
+            for (let i = 1; i < count; i++) { ctx.moveTo(x, y + (dh * i / count)); ctx.lineTo(x + dw, y + (dh * i / count)); }
+        }
         ctx.stroke();
 
         ctx.fillStyle = '#666';
+        ctx.font = '12px sans-serif';
         ctx.fillText(`L: ${L}`, w / 2 - 15, y - 5);
         ctx.fillText(`B: ${B}`, x + dw + 5, h / 2);
     }
-    else if (shape === 'column' || shape === 'beam') {
-        const B = params.b || 300;
-        const D = params.D || 450;
-        const ratio = Math.min((w - 40) / B, (h - 40) / D);
-        const dw = B * ratio;
-        const dh = D * ratio;
+    else if (shape === 'column') {
+        const B_real = params.b || 300;
+        const D_real = params.D || 450;
+        // Fit to canvas
+        const ratio = Math.min((w - 50) / B_real, (h - 50) / D_real);
+        const dw = B_real * ratio;
+        const dh = D_real * ratio;
         const x = (w - dw) / 2;
         const y = (h - dh) / 2;
 
-        // Concrete Face
+        // Concrete
+        ctx.strokeStyle = colorConcStroke;
         ctx.strokeRect(x, y, dw, dh);
 
-        // Ring
+        // Main Stirrup
         const cover = (params.cover || 40) * ratio;
-        ctx.strokeStyle = 'red';
-        ctx.strokeRect(x + cover, y + cover, dw - 2 * cover, dh - 2 * cover);
+        const stirrupW = dw - 2 * cover;
+        const stirrupH = dh - 2 * cover;
+        const sx = x + cover;
+        const sy = y + cover;
 
-        // Bars (Dots)
-        ctx.fillStyle = '#3b82f6';
-        const r = 3;
+        ctx.strokeStyle = colorStirrup;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx, sy, stirrupW, stirrupH);
+
+        // Calculate Bars
+        const bars = []; // Flats list of dias
+        if (params.vertSets) params.vertSets.forEach(set => {
+            for (let i = 0; i < set.no; i++) bars.push(set.dia);
+        });
+        // Sort descending to put heavier bars at corners if logic permits, 
+        // but here we just blindly place them
+        bars.sort((a, b) => b - a);
+
+        // Placement Logic: 4 Corners first, then distribute remaining
+        const coords = [];
+
         // Corners
-        ctx.beginPath(); ctx.arc(x + cover + r, y + cover + r, r, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.arc(x + dw - cover - r, y + cover + r, r, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.arc(x + dw - cover - r, y + dh - cover - r, r, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.arc(x + cover + r, y + dh - cover - r, r, 0, 2 * Math.PI); ctx.fill();
+        coords.push({ x: sx, y: sy }); // TL
+        coords.push({ x: sx + stirrupW, y: sy }); // TR
+        coords.push({ x: sx + stirrupW, y: sy + stirrupH }); // BR
+        coords.push({ x: sx, y: sy + stirrupH }); // BL
 
-        ctx.fillStyle = '#666';
-        ctx.fillText(`${B}x${D}`, w / 2 - 15, h - 5);
+        const remnant = bars.length - 4;
+        if (remnant > 0) {
+            // Distribute on sides. 
+            // Simple logic: Split remnant equally among 4 sides? 
+            // Or usually along longer sides? Let's do perimeter distribution
+            // Side order: Top, Right, Bottom, Left
+            const sideCount = Math.ceil(remnant / 4); // simplistic
+            // For better visual, we distribute along Top/Bottom if width > depth or similar
+            // Let's just go around
+
+            // Top Edge (between TL and TR)
+            const topC = Math.ceil(remnant / 4);
+            const rightC = Math.ceil((remnant - topC) / 3);
+            const botC = Math.ceil((remnant - topC - rightC) / 2);
+            const leftC = remnant - topC - rightC - botC;
+
+            // Helper to fill line
+            const fillLine = (x1, y1, x2, y2, c) => {
+                for (let k = 1; k <= c; k++) {
+                    coords.push({
+                        x: x1 + (x2 - x1) * (k / (c + 1)),
+                        y: y1 + (y2 - y1) * (k / (c + 1))
+                    });
+                }
+            };
+
+            fillLine(sx, sy, sx + stirrupW, sy, topC);
+            fillLine(sx + stirrupW, sy, sx + stirrupW, sy + stirrupH, rightC);
+            fillLine(sx + stirrupW, sy + stirrupH, sx, sy + stirrupH, botC);
+            fillLine(sx, sy + stirrupH, sx, sy, leftC);
+        }
+
+        // Draw Bars
+        bars.forEach((dia, i) => {
+            if (i < coords.length) drawBar(coords[i].x, coords[i].y, dia);
+        });
+
+        // Inner Links (Centers)
+        if (params.innerSets) {
+            ctx.strokeStyle = colorInner;
+            ctx.lineWidth = 1;
+            params.innerSets.forEach(set => {
+                // If set has a/b, draw rect centered
+                if (set.a && set.b) {
+                    const iw = set.a * ratio;
+                    const ih = set.b * ratio;
+                    ctx.strokeRect((w - iw) / 2, (h - ih) / 2, iw, ih);
+                } else if (set.a) {
+                    // Just a link? Draw line usually or diamond? Assuming straight link
+                    // Draw horizontal/vertical line centered?
+                    // Let's draw a vertical link of length A centered
+                    const len = set.a * ratio;
+                    ctx.beginPath();
+                    ctx.moveTo(w / 2, h / 2 - len / 2);
+                    ctx.lineTo(w / 2, h / 2 + len / 2);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        ctx.fillStyle = '#666'; ctx.fillText(`${B_real}x${D_real}`, w / 2 - 15, h - 5);
     }
+    else if (shape === 'beam') {
+        const B_real = params.b || 300;
+        const D_real = params.D || 450;
+        const ratio = Math.min((w - 50) / B_real, (h - 50) / D_real);
+        const dw = B_real * ratio;
+        const dh = D_real * ratio;
+        const x = (w - dw) / 2;
+        const y = (h - dh) / 2;
+
+        ctx.strokeStyle = colorConcStroke;
+        ctx.strokeRect(x, y, dw, dh);
+
+        const cover = (params.cover || 25) * ratio;
+        const sx = x + cover;
+        const sy = y + cover;
+        const sw = dw - 2 * cover;
+        const sh = dh - 2 * cover;
+
+        ctx.strokeStyle = colorStirrup;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx, sy, sw, sh);
+
+        // Layers
+        // Gap for 2nd layer: 20mm or bar dia (max). We use 25mm as safe visual
+        const layerGap = 25 * ratio;
+
+        // Top Bars
+        if (params.topSets) {
+            params.topSets.forEach((set, idx) => {
+                const layerY = sy + (idx * layerGap); // Layer 1 at top, Layer 2 below it
+                // Distribute set.no bars along width sw
+                const count = set.no;
+                if (count > 0) {
+                    if (count === 1) {
+                        drawBar(sx + sw / 2, layerY, set.dia);
+                    } else {
+                        // Distribute
+                        for (let i = 0; i < count; i++) {
+                            const bx = sx + (sw * i / (count - 1));
+                            drawBar(bx, layerY, set.dia);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Bottom Bars
+        if (params.botSets) {
+            params.botSets.forEach((set, idx) => {
+                const layerY = (sy + sh) - (idx * layerGap); // Layer 1 at bottom, Layer 2 above it
+                const count = set.no;
+                if (count > 0) {
+                    if (count === 1) {
+                        drawBar(sx + sw / 2, layerY, set.dia);
+                    } else {
+                        for (let i = 0; i < count; i++) {
+                            const bx = sx + (sw * i / (count - 1));
+                            drawBar(bx, layerY, set.dia);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Inner Rings
+        if (params.innerSets) {
+            ctx.strokeStyle = colorInner;
+            ctx.lineWidth = 1;
+            params.innerSets.forEach(set => {
+                if (set.a && set.b) {
+                    const iw = set.a * ratio;
+                    const ih = (set.b || 0) * ratio;
+                    // Centered vertically but what about horz? Centered.
+                    ctx.strokeRect((w - iw) / 2, (h - ih) / 2, iw, ih);
+                }
+            });
+        }
+
+        ctx.fillStyle = '#666'; ctx.fillText(`${B_real}x${D_real}`, w / 2 - 15, h - 5);
+    }
+    // ... keep existing slab/shape logic ...
     else if (shape === 'slab') {
         const Lx = params.Lx || 3000;
         const Ly = params.Ly || 4000;
-        const ratio = Math.min((w - 30) / Lx, (h - 30) / Ly); // Swapped visual for better fit usually, but keep simple
+        const ratio = Math.min((w - 30) / Lx, (h - 30) / Ly);
         const dw = Lx * ratio;
         const dh = Ly * ratio;
         const x = (w - dw) / 2;
@@ -733,12 +919,14 @@ function drawShape(shape, params) {
         ctx.stroke();
 
         ctx.fillStyle = '#666';
+        ctx.font = '12px sans-serif';
         ctx.fillText(`Lx: ${Lx}`, w / 2 - 20, y - 5);
         ctx.fillText(`Ly: ${Ly}`, x + dw + 5, h / 2);
     }
     else if (shape === 'stirrup-rect') {
         const rw = w - 2 * pad;
         const rh = h - 2 * pad;
+        ctx.strokeStyle = colorBar;
         ctx.strokeRect(pad, pad, rw, rh);
         ctx.beginPath();
         ctx.moveTo(pad + rw / 2, pad);
@@ -746,29 +934,36 @@ function drawShape(shape, params) {
         ctx.moveTo(pad + rw / 2, pad);
         ctx.lineTo(pad + rw / 2 - 10, pad + 10);
         ctx.stroke();
+        ctx.fillStyle = '#666';
         ctx.fillText(`A: ${params.a || 'A'}`, w / 2 - 10, h - 5);
         ctx.fillText(`B: ${params.b || 'B'}`, 5, h / 2);
     }
     else if (shape === 'stirrup-circ') {
         ctx.beginPath();
+        ctx.strokeStyle = colorBar;
         ctx.arc(w / 2, h / 2, (h / 2) - pad, 0, 2 * Math.PI);
         ctx.stroke();
+        ctx.fillStyle = '#666';
         ctx.fillText(`D: ${params.d_member || 'D'}`, w / 2 - 10, h / 2 + 5);
     }
     else if (shape === 'l-bar') {
         ctx.beginPath();
+        ctx.strokeStyle = colorBar;
         ctx.moveTo(pad + 20, pad);
         ctx.lineTo(pad + 20, h - pad); // Vert
         ctx.lineTo(w - pad, h - pad); // Horz
         ctx.stroke();
+        ctx.fillStyle = '#666';
         ctx.fillText(`A: ${params.a || 'A'}`, pad, h / 2);
         ctx.fillText(`B: ${params.b || 'B'}`, w / 2, h - 5);
     }
     else if (shape === 'straight') {
         ctx.beginPath();
+        ctx.strokeStyle = colorBar;
         ctx.moveTo(pad, h / 2);
         ctx.lineTo(w - pad, h / 2);
         ctx.stroke();
+        ctx.fillStyle = '#666';
         ctx.fillText(`L: ${params.len || 'Len'}`, w / 2 - 10, h / 2 - 10);
     }
 }
@@ -843,6 +1038,9 @@ function loadProject(name, append = false) {
             state.bbsItems = [...state.bbsItems, ...(projects[name].items || [])];
         } else {
             state.bbsItems = projects[name].items || [];
+            // Pre-fill name for re-saving
+            const nameInp = document.getElementById('project-name-inp');
+            if (nameInp) nameInp.value = name;
         }
         renderBBSList();
         document.getElementById('project-modal').classList.remove('active');
@@ -1105,7 +1303,14 @@ function addBBSItem() {
     if (!items || items.length === 0) return;
     const memName = document.getElementById('bbs-name').value || 'MEM';
     const type = document.getElementById('bbs-type').value;
-    items.forEach(i => { i.memberName = memName.toUpperCase(); i.memberType = type; state.bbsItems.push(i); });
+    const memCount = parseFloat(document.getElementById('member-count').value) || 1;
+
+    items.forEach(i => {
+        i.memberName = memName.toUpperCase();
+        i.memberType = type;
+        i.memberCount = memCount; // Store count
+        state.bbsItems.push(i);
+    });
     renderBBSList();
     const btn = document.getElementById('bbs-add-btn'); const old = btn.innerHTML; btn.innerHTML = 'Added! ✓'; btn.style.background = '#10b981'; setTimeout(() => { btn.innerHTML = old; btn.style.background = ''; }, 1000);
 }
@@ -1125,7 +1330,7 @@ function renderBBSList() {
     const groups = {};
     state.bbsItems.forEach((item, index) => {
         const key = `${item.memberName}-${item.memberType}`;
-        if (!groups[key]) groups[key] = { name: item.memberName, type: item.memberType, items: [], weight: 0 };
+        if (!groups[key]) groups[key] = { name: item.memberName, type: item.memberType, count: item.memberCount, items: [], weight: 0 };
         groups[key].items.push({ ...item, originalIndex: index });
         groups[key].weight += item.weight;
         grandTotal += item.weight;
@@ -1137,11 +1342,12 @@ function renderBBSList() {
 
         let displayTitle = '';
         const typeTitle = MEMBER_CONFIG[group.type]?.title || group.type;
-        // Smart Header: If name is generic 'MEM', show the Type Title (e.g. 'Footing') as the main header
+        const countBadge = group.count > 1 ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:8px;">x${group.count} Nos</span>` : '';
+
         if (group.name === 'MEM') {
-            displayTitle = typeTitle;
+            displayTitle = `${typeTitle} ${countBadge}`;
         } else {
-            displayTitle = `${group.name} <span style="font-size:0.8em;color:#666;font-weight:400;">(${typeTitle})</span>`;
+            displayTitle = `${group.name} <span style="font-size:0.8em;color:#666;font-weight:400;">(${typeTitle})</span> ${countBadge}`;
         }
 
         headerRow.innerHTML = `<td colspan="5" style="column-span:all;font-weight:700;color:var(--primary-color);">${displayTitle}</td><td style="font-weight:700;">${formatNum(group.weight)}</td><td><button class="action-btn text-red" onclick="removeBBSGroup('${group.name}', '${group.type}')" title="Delete Member">&times;</button></td>`;
@@ -1169,35 +1375,20 @@ function renderBBSList() {
     const wireKg = (grandTotal / 1000) * state.bindingWireRate;
     footer.innerHTML = `Binding Wire Required (~${state.bindingWireRate}kg/T): <b>${formatNum(wireKg)} kg</b>`;
 
-    // Inject Export Buttons if not present
-    let exportDiv = document.getElementById('bbs-export-actions');
-    if (!exportDiv) {
-        exportDiv = document.createElement('div');
-        exportDiv.id = 'bbs-export-actions';
-        exportDiv.style.marginTop = '15px';
-        exportDiv.style.display = 'flex';
-        exportDiv.style.gap = '10px';
-        exportDiv.style.justifyContent = 'flex-end';
+    // Export buttons are now static in HTML
 
-        exportDiv.innerHTML = `
-            <button class="btn" style="background:#4b5563;" onclick="printBBS()">Print PDF</button>
-            <button class="btn" style="background:#047857;" onclick="exportCSV()">Export Excel</button>
-            <button class="btn" style="background:#2563eb;" onclick="openProjectModal()">Projects</button>
-        `;
-        footer.after(exportDiv);
+    window.printBBS = printBBS;
+    window.exportCSV = exportCSV;
+    window.openProjectModal = openProjectModal;
+
+    function removeBBSItem(index) { state.bbsItems.splice(index, 1); renderBBSList(); }
+    function removeBBSGroup(memName, memType) {
+        if (!confirm(`Delete all for "${memName === 'MEM' ? (MEMBER_CONFIG[memType]?.title || memType) : memName}"?`)) return;
+        state.bbsItems = state.bbsItems.filter(i => !(i.memberName === memName && i.memberType === memType));
+        renderBBSList();
     }
+    window.removeBBSItem = removeBBSItem; window.removeBBSGroup = removeBBSGroup;
 }
-window.printBBS = printBBS;
-window.exportCSV = exportCSV;
-window.openProjectModal = openProjectModal;
-
-function removeBBSItem(index) { state.bbsItems.splice(index, 1); renderBBSList(); }
-function removeBBSGroup(memName, memType) {
-    if (!confirm(`Delete all for "${memName === 'MEM' ? (MEMBER_CONFIG[memType]?.title || memType) : memName}"?`)) return;
-    state.bbsItems = state.bbsItems.filter(i => !(i.memberName === memName && i.memberType === memType));
-    renderBBSList();
-}
-window.removeBBSItem = removeBBSItem; window.removeBBSGroup = removeBBSGroup;
 setupBBSListeners(); init();
 
 // --- Optimization Logic ---
@@ -1216,20 +1407,24 @@ function generateCutPlan() {
         if (!diaGroups[item.dia]) diaGroups[item.dia] = [];
         // Flatten qty: if qty is 4, add 4 separate items of cutLen
         for (let i = 0; i < item.qty; i++) {
-            diaGroups[item.dia].push(item.cutLen);
+            // Push object with metadata
+            diaGroups[item.dia].push({
+                len: item.cutLen,
+                label: `${item.memberName} (${item.shape})`
+            });
         }
     });
 
     // 2. Process Each Diameter
     let html = '';
-    const sortedDias = Object.keys(diaGroups).sort((a, b) => b - a); // Process thickest first usually
+    const sortedDias = Object.keys(diaGroups).sort((a, b) => b - a);
 
     sortedDias.forEach(dia => {
-        const pieces = diaGroups[dia].sort((a, b) => b - a); // Descending length
+        const pieces = diaGroups[dia].sort((a, b) => b.len - a.len); // Descending length
         const bars = optimizeStock(stockLen, pieces);
 
         const totalStock = bars.length * stockLen;
-        const usedLen = pieces.reduce((a, b) => a + b, 0);
+        const usedLen = pieces.reduce((a, b) => a + b.len, 0);
         const waste = totalStock - usedLen;
         const wastePct = (waste / totalStock) * 100;
 
@@ -1248,10 +1443,11 @@ function generateCutPlan() {
             return `
                             <div style="display:flex; align-items:center; gap:10px;">
                                 <div style="font-size:0.85em; color:#666; width:60px;">Bar ${idx + 1}</div>
-                                <div style="flex:1; height:24px; background:#f3f4f6; border-radius:4px; overflow:hidden; display:flex;">
+                                <div style="flex:1; height:32px; background:#f3f4f6; border-radius:4px; overflow:hidden; display:flex;">
                                     ${bar.cuts.map(c => `
-                                        <div style="width:${(c / 12) * 100}%; background:#3b82f6; border-right:1px solid rgba(255,255,255,0.5); color:white; font-size:10px; display:flex; align-items:center; justify-content:center; overflow:hidden;" title="${c.toFixed(2)}m">
-                                            ${c.toFixed(2)}
+                                        <div style="width:${(c.len / 12) * 100}%; background:#3b82f6; border-right:1px solid rgba(255,255,255,0.3); color:white; font-size:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; position:relative;" title="${c.len.toFixed(2)}m - ${c.label}">
+                                            <span style="font-weight:bold;">${c.len.toFixed(2)}</span>
+                                            <span style="font-size:8px; opacity:0.8;">${c.label.split(' ')[0]}</span>
                                         </div>
                                     `).join('')}
                                     <div style="flex:1; background:#fee2e2; display:flex; align-items:center; justify-content:center; color:#991b1b; font-size:10px;" title="Waste">
@@ -1276,13 +1472,13 @@ function optimizeStock(stockLen, pieces) {
 
     pieces.forEach(p => {
         // Try to fit in existing bar
-        const bestBar = bars.find(b => b.remaining >= p);
+        const bestBar = bars.find(b => b.remaining >= p.len);
         if (bestBar) {
-            bestBar.remaining -= p;
+            bestBar.remaining -= p.len;
             bestBar.cuts.push(p);
         } else {
             // New Bar
-            bars.push({ remaining: stockLen - p, cuts: [p] });
+            bars.push({ remaining: stockLen - p.len, cuts: [p] });
         }
     });
     return bars;
