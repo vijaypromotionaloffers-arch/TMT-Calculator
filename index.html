@@ -17,15 +17,24 @@
 
     <main class="container">
         <header class="app-header">
-            <div class="header-content">
+            <div class="header-left">
                 <div class="logo">
-                    <div class="logo-icon">
-                        <span>M</span>
-                    </div>
+                    <div class="logo-icon"><span>M</span></div>
                     <h1>TMT Calculator</h1>
                 </div>
-                <button id="info-btn" class="icon-btn" aria-label="How calculations work">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            </div>
+
+            <div class="header-right">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" data-tab="estimator-tab">Cost Estimator</button>
+                    <button class="tab-btn" data-tab="bbs-tab">BBS Calculator</button>
+                    <button class="tab-btn" data-tab="optimize-tab">Cut Plan</button>
+                </div>
+
+
+
+                <button id="info-btn" class="icon-btn" aria-label="How calculations work" title="Info">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -33,15 +42,7 @@
                     </svg>
                 </button>
             </div>
-            <p class="subtitle">Precision Steel Weight & Cost Estimation</p>
         </header>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs-nav">
-            <button class="tab-btn active" data-tab="estimator-tab">Cost Estimator</button>
-            <button class="tab-btn" data-tab="bbs-tab">BBS Calculator</button>
-            <button class="tab-btn" data-tab="optimize-tab">Cut Plan</button>
-        </div>
 
         <!-- Tab 1: Cost Estimator -->
         <section id="estimator-tab" class="tab-content active">
@@ -184,8 +185,18 @@
                 <!-- BBS Input -->
                 <!-- BBS Input -->
                 <section class="calculator-card glass-panel">
-                    <div class="card-header">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
                         <h2>Member Details</h2>
+                        <div class="unit-toggle-container" style="display:flex; align-items:center;">
+                            <span
+                                style="font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-right:6px;">MM</span>
+                            <label class="switch sm">
+                                <input type="checkbox" id="unit-toggle" onchange="toggleUnit(this)">
+                                <span class="slider round"></span>
+                            </label>
+                            <span
+                                style="font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-left:6px;">FT</span>
+                        </div>
                     </div>
 
                     <!-- Member Identity -->
@@ -215,22 +226,20 @@
 
                     <div style="margin: 1.5rem 0; border-top: 1px solid rgba(0,0,0,0.05);"></div>
 
+                    <!-- Shape Preview -->
+                    <div class="input-group full-width" style="text-align: center; margin-bottom: 20px;"
+                        id="preview-container">
+                        <canvas id="shape-preview" width="300" height="150"
+                            style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; width: 100%; max-width: 350px; box-shadow:inset 0 2px 4px rgba(0,0,0,0.02);"></canvas>
+                        <p style="font-size:0.8em; color:#94a3b8; margin-top:4px;">Dynamic Preview</p>
+                    </div>
+
                     <!-- Dynamic Inputs Container -->
                     <div id="bbs-dynamic-inputs">
                         <!-- Inputs injected by JS -->
                     </div>
 
-                    <!-- Live Preview -->
-                    <div class="live-preview" id="bbs-preview-box">
-                        <div class="preview-item">
-                            <span class="label">Total Steel</span>
-                            <span class="value" id="bbs-total-weight">0.00 kg</span>
-                        </div>
-                        <div class="preview-item">
-                            <span class="label">Items</span>
-                            <span class="value" id="bbs-item-count">0 Bars</span>
-                        </div>
-                    </div>
+
 
                     <button id="bbs-add-btn" class="primary-btn">
                         <span class="btn-icon">+</span> Add to Schedule
@@ -242,7 +251,8 @@
                     <div class="card-header" style="flex-wrap:wrap; gap:10px;">
                         <h2>Bar Bending Schedule</h2>
                         <div style="display:flex; gap:5px; align-items:center;">
-                            <button id="btn-project" class="btn-outline-sm" title="Load/Save Projects">📂 Projects</button>
+                            <button id="btn-project" class="btn-outline-sm" title="Load/Save Projects">📂
+                                Projects</button>
                             <button id="btn-excel" class="btn-outline-sm" title="Export to Excel">📊 Excel</button>
                             <button id="btn-print" class="btn-outline-sm" title="Print View">🖨️ Print</button>
                             <button id="bbs-clear-btn" class="text-btn" style="white-space:nowrap;">Clear</button>
@@ -279,43 +289,49 @@
                 </section>
             </div>
         </section>
-    </main>
 
-    <!-- Tab 3: Optimization -->
-    <section id="optimize-tab" class="tab-content" style="display: none;">
-        <div class="calculator-card glass-panel" style="max-width: 800px; margin: 0 auto;">
-            <div class="card-header">
-                <h2>Bar Cutting Optimization</h2>
-                <span
-                    style="font-size:0.9em; color:#fff; opacity:0.8; background:var(--primary-color); padding:2px 8px; border-radius:12px;">Beta</span>
-            </div>
 
-            <div
-                style="background:#f0f9ff; border:1px solid #bae6fd; padding:15px; border-radius:8px; margin-bottom:20px;">
-                <p style="color:#0369a1; font-size:0.95em;">
-                    <b>How it works:</b> This tool calculates the most efficient way to cut the required lengths from
-                    standard <b>12m</b> stock bars to minimize waste.
-                    It uses data from your "BBS Calculator" tab.
-                </p>
-            </div>
+        <!-- Tab 3: Optimization -->
+        <section id="optimize-tab" class="tab-content" style="display: none;">
+            <div class="calculator-card glass-panel" style="max-width: 100%; margin: 0 auto;">
+                <div class="card-header"
+                    style="flex-wrap:wrap; align-items:center; gap:15px; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:15px; margin-bottom:15px;">
+                    <div style="flex:1;">
+                        <h2 style="display:inline-block; margin-right:10px;">Bar Cutting Optimization</h2>
+                        <span
+                            style="font-size:0.8em; color:#fff; opacity:0.8; background:var(--primary-color); padding:2px 8px; border-radius:12px; vertical-align:middle;">Beta</span>
+                    </div>
 
-            <div class="input-group">
-                <label>Stock Bar Length (meters)</label>
-                <input type="number" id="opt-stock-len" value="12" disabled style="background:#f3f4f6; color:#666;">
-            </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <label style="font-size:0.9em; margin:0; white-space:nowrap; color:#555;">Stock Length
+                            (m):</label>
+                        <input type="number" id="opt-stock-len" value="12" disabled
+                            style="background:#f3f4f6; color:#666; width:60px; padding:6px; border:1px solid #ddd; border-radius:6px; font-weight:600; text-align:center;">
+                        <button id="btn-generate-plan" class="primary-btn" style="min-width:160px; padding:8px 20px;">
+                            <span class="btn-icon">⚡</span> Generate Plan
+                        </button>
+                    </div>
+                </div>
 
-            <button id="btn-generate-plan" class="primary-btn" style="margin-top:10px;">
-                <span class="btn-icon">⚡</span> Generate Cut Plan
-            </button>
+                <div
+                    style="background:#f0f9ff; border:1px solid #bae6fd; padding:12px 18px; border-radius:8px; display:flex; gap:10px; align-items:center; margin-bottom:20px;">
+                    <div style="font-size:1.2em;">💡</div>
+                    <p style="color:#0369a1; font-size:0.95em; margin:0;">
+                        <b>How it works:</b> Optimizes cuts from standard <b>12m</b> bars to minimize waste. Uses data
+                        from
+                        "BBS Calculator".
+                    </p>
+                </div>
 
-            <div id="optimization-results" style="margin-top:25px;">
-                <!-- Results injected here -->
-                <div class="empty-state">
-                    Add items to BBS first, then click Generate.
+                <div id="optimization-results">
+                    <!-- Results injected here -->
+                    <div class="empty-state">
+                        Add items to BBS first, then click "Generate Plan".
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    </main>
 
     <!-- Info Modal -->
     <div id="info-modal" class="modal-backdrop">

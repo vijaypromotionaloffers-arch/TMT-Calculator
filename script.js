@@ -18,6 +18,58 @@ const state = {
 const BUNDLE_MAP = { 8: 10, 10: 7, 12: 5, 16: 3, 20: 2, 25: 1, 32: 1 };
 const UNIT_WEIGHT_CONST = 162;
 
+// --- Unit Conversion ---
+const UNITS = { MM: 'mm', FT: 'ft' };
+let appUnit = UNITS.MM; // Default unit
+
+// Converts any length string (mm, ft, in) to Millimeters (integer)
+// Converts any length string (mm, ft, in) to Millimeters (integer)
+function toMM(valStr, unitContext = appUnit) {
+    if (!valStr) return 0;
+    valStr = String(valStr).trim();
+    if (valStr === '') return 0;
+
+    // Check for "10 5", "10-5", "10.5" (as ft.in) format
+    // Allow flexible spacing and separators
+    const flexMatch = valStr.match(/^(\d+)[\s\-\.]+(\d+)\s*"?$/);
+
+    if (flexMatch) {
+        let ft = parseInt(flexMatch[1]);
+        let inc = parseInt(flexMatch[2]);
+        return Math.round((ft * 304.8) + (inc * 25.4));
+    }
+
+    // Check for Standard Foot/Inch format: 10' 5", 10', 5"
+    const ftMatch = valStr.match(/(\d+)\'/);
+    const inMatch = valStr.match(/(\d+)\"/);
+
+    if (ftMatch || inMatch) {
+        let ft = ftMatch ? parseInt(ftMatch[1]) : 0;
+        let inc = inMatch ? parseInt(inMatch[1]) : 0;
+        return Math.round((ft * 304.8) + (inc * 25.4));
+    }
+
+    // Assume MM if simple number
+    return Math.round(parseFloat(valStr) || 0);
+}
+
+// Converts Millimeters (integer) to Display String based on Current Unit
+function toDisplay(mmVal) {
+    if (isNaN(mmVal) || mmVal === 0) return '';
+    if (appUnit === UNITS.MM) {
+        return String(Math.round(mmVal));
+    } else {
+        // Convert to ft' in"
+        // 1 inch = 25.4 mm
+        let totalInches = Math.round(mmVal / 25.4);
+        let feet = Math.floor(totalInches / 12);
+        let inches = totalInches % 12;
+        if (feet > 0 && inches > 0) return `${feet}' ${inches}"`;
+        if (feet > 0) return `${feet}'`;
+        return `${inches}"`;
+    }
+}
+
 function getDiaOptions(selected) {
     return [8, 10, 12, 16, 20, 25, 32].map(d =>
         `<option value="${d}" ${d === selected ? 'selected' : ''}>${d}mm</option>`
@@ -107,10 +159,7 @@ const MEMBER_CONFIG = {
 
             <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="50"></div>
             
-             <!-- Canvas Preview -->
-            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                <canvas id="shape-preview" width="280" height="110"></canvas>
-            </div>
+
         `
     },
     column: {
@@ -147,10 +196,7 @@ const MEMBER_CONFIG = {
 
             <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="40"></div>
             
-             <!-- Canvas Preview -->
-            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                <canvas id="shape-preview" width="280" height="110"></canvas>
-            </div>
+
         `
     },
     beam: {
@@ -191,10 +237,7 @@ const MEMBER_CONFIG = {
 
             <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="25"></div>
 
-             <!-- Canvas Preview -->
-            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                <canvas id="shape-preview" width="280" height="110"></canvas>
-            </div>
+
         `
     },
     slab: {
@@ -244,10 +287,7 @@ const MEMBER_CONFIG = {
 
              <div class="input-group"><label>Cover (mm)</label><input type="number" class="bbs-mem-inp" data-key="cover" value="20"></div>
 
-             <!-- Canvas Preview -->
-            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                <canvas id="shape-preview" width="280" height="110"></canvas>
-            </div>
+
         `
     },
     shape: {
@@ -263,10 +303,7 @@ const MEMBER_CONFIG = {
                 </select>
             </div>
             
-            <!-- Canvas Preview -->
-            <div style="width:100%; height:120px; background:#f9f9f9; border:1px solid #eee; margin:10px 0; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                <canvas id="shape-preview" width="280" height="110"></canvas>
-            </div>
+
 
             <div class="input-group full-width">
                  <label>Diameter</label>
@@ -1066,16 +1103,66 @@ function renderProjectList() {
         return;
     }
 
-    list.innerHTML = names.map(name => `
+    list.innerHTML = names.map(name => {
+        const safeName = name.replace(/'/g, "\\'");
+        return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
             <span style="font-weight:600; font-size:0.95em; color:#333;">${name}</span>
             <div style="display:flex; gap:5px;">
-                <button class="btn-outline-sm" onclick="loadProject('${name}', false)" title="Replace Current List">Load</button>
-                <button class="btn-outline-sm" onclick="loadProject('${name}', true)" title="Add to Current List">+ Add</button>
-                <button class="action-btn text-red" onclick="deleteProject('${name}')" style="margin-left:5px;">&times;</button>
+                <button class="action-btn" onclick="printProject('${safeName}')" title="Print Project" style="color:#4b5563;">🖨️</button>
+                <button class="action-btn" onclick="exportProjectExcel('${safeName}')" title="Export Excel" style="color:#059669;">📊</button>
+                <button class="action-btn" onclick="exportProjectJSON('${safeName}')" title="Backup JSON" style="color:#6366f1;">⬇️</button>
+                <button class="btn-outline-sm" onclick="loadProject('${safeName}', false)" title="Replace Current List">Load</button>
+                <button class="btn-outline-sm" onclick="loadProject('${safeName}', true)" title="Add to Current List">+ Add</button>
+                <button class="action-btn text-red" onclick="deleteProject('${safeName}')" style="margin-left:5px;">&times;</button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
+}
+
+function exportProjectJSON(name) {
+    const projects = getProjects();
+    if (!projects[name]) return;
+    const data = JSON.stringify(projects[name], null, 2);
+    const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Sanitize filename: replace non-alphanumeric chars with underscore
+    const safeFilename = name.replace(/[^a-z0-9]/gi, '_');
+    a.download = `${safeFilename}_backup.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importProjectJSON(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data.items || !Array.isArray(data.items)) { throw new Error('Invalid project structure'); }
+
+            // Default name from filename
+            let name = file.name.replace('.json', '').replace('_backup', '');
+            name = prompt('Enter name for imported project:', name);
+            if (!name) return;
+
+            const projects = getProjects();
+            if (projects[name] && !confirm(`Overwrite existing project "${name}"?`)) return;
+
+            projects[name] = data;
+            localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projects));
+            renderProjectList();
+            alert('Project imported successfully!');
+        } catch (err) {
+            alert('Error importing file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    input.value = ''; // Reset
 }
 
 function openProjectModal() {
@@ -1105,12 +1192,21 @@ function injectProjectUI() {
                 
                 <label style="font-weight:600; display:block; margin-bottom:10px; color:#4b5563;">Saved Projects</label>
                 <div id="saved-projects-list" style="max-height:300px; overflow-y:auto; border:1px solid #eee; border-radius:4px; background:white;"></div>
+
+                <div style="margin-top:20px; border-top:1px solid #eee; padding-top:15px; text-align:center;">
+                    <input type="file" id="import-file" style="display:none" accept=".json" onchange="importProjectJSON(this)">
+                    <button class="btn-outline-sm" style="width:100%; border-style:dashed; color:#666;" onclick="document.getElementById('import-file').click()">
+                        📥 Import Project Backup (.json)
+                    </button>
+                    <p style="font-size:0.8em; color:#999; margin-top:5px;">Transfer projects between export/import via JSON</p>
+                </div>
             </div>
         `;
         document.body.appendChild(modal);
     }
 }
 window.saveProject = saveProject; window.loadProject = loadProject; window.deleteProject = deleteProject;
+window.exportProjectJSON = exportProjectJSON; window.importProjectJSON = importProjectJSON;
 
 function collectSets(selector) {
     // Implementation same as before
@@ -1122,10 +1218,10 @@ function collectSets(selector) {
         const aInp = row.querySelector('.set-a');
         const bInp = row.querySelector('.set-b');
         const item = { dia };
-        if (spaceInp) item.space = parseFloat(spaceInp.value) || 0;
+        if (spaceInp) item.space = toMM(spaceInp.value);
         if (noInp) item.no = parseFloat(noInp.value) || 0;
-        if (aInp) item.a = parseFloat(aInp.value) || 0;
-        if (bInp) item.b = parseFloat(bInp.value) || 0;
+        if (aInp) item.a = toMM(aInp.value);
+        if (bInp) item.b = toMM(bInp.value);
         if (dia > 0) { if (item.no > 0 || item.space > 0) sets.push(item); }
     });
     return sets;
@@ -1136,7 +1232,7 @@ function calculateBBSPreview() {
     const inputs = {};
 
     document.querySelectorAll('#bbs-dynamic-inputs .bbs-mem-inp:not(.set-dia):not(.set-no):not(.set-space):not(.set-a):not(.set-b)').forEach(i => {
-        if (i.dataset.key) inputs[i.dataset.key] = parseFloat(i.value) || 0;
+        if (i.dataset.key) inputs[i.dataset.key] = toMM(i.value);
     });
     const memCount = parseFloat(document.getElementById('member-count').value) || 1;
 
@@ -1375,12 +1471,6 @@ function renderBBSList() {
     const wireKg = (grandTotal / 1000) * state.bindingWireRate;
     footer.innerHTML = `Binding Wire Required (~${state.bindingWireRate}kg/T): <b>${formatNum(wireKg)} kg</b>`;
 
-    // Export buttons are now static in HTML
-
-    window.printBBS = printBBS;
-    window.exportCSV = exportCSV;
-    window.openProjectModal = openProjectModal;
-
     function removeBBSItem(index) { state.bbsItems.splice(index, 1); renderBBSList(); }
     function removeBBSGroup(memName, memType) {
         if (!confirm(`Delete all for "${memName === 'MEM' ? (MEMBER_CONFIG[memType]?.title || memType) : memName}"?`)) return;
@@ -1389,6 +1479,64 @@ function renderBBSList() {
     }
     window.removeBBSItem = removeBBSItem; window.removeBBSGroup = removeBBSGroup;
 }
+
+function generateCSV(items) {
+    let csv = '\uFEFFsep=,\nMember,Type,Shape,Dia (mm),Cut Len (m),Qty,Weight (kg)\n';
+    const groups = {};
+    items.forEach(item => {
+        const key = `${item.memberName}-${item.memberType}`;
+        if (!groups[key]) groups[key] = { name: item.memberName, type: item.memberType, count: item.memberCount || 1, items: [], weight: 0 };
+        groups[key].items.push(item);
+        groups[key].weight += item.weight;
+    });
+
+    Object.values(groups).forEach(group => {
+        const typeTitle = MEMBER_CONFIG[group.type]?.title || group.type;
+        const countStr = group.count > 1 ? ` (x${group.count})` : '';
+        csv += `"${group.name} - ${typeTitle}${countStr}",,,,,,"${formatNum(group.weight)}"\n`;
+        group.items.forEach(item => {
+            csv += ` , , ${item.shape}, ${item.dia}, ${item.cutLen.toFixed(3)}, ${item.qty}, ${formatNum(item.weight)}\n`;
+        });
+    });
+    return csv;
+}
+
+function exportCSV() {
+    if (state.bbsItems.length === 0) { alert('No data to export'); return; }
+    const csv = generateCSV(state.bbsItems);
+    downloadCSV(csv, 'bbs_export.csv');
+}
+
+function exportProjectExcel(name) {
+    const projects = getProjects();
+    if (!projects[name]) return;
+    const csv = generateCSV(projects[name].items);
+    downloadCSV(csv, `${name}_export.csv`);
+}
+
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function printProject(name) {
+    if (!confirm(`This will load project "${name}" to the screen to print it. Continue?`)) return;
+    loadProject(name, false);
+    document.getElementById('project-modal').classList.remove('active');
+    setTimeout(() => window.print(), 500);
+}
+
+window.printBBS = printBBS;
+window.exportCSV = exportCSV;
+window.openProjectModal = openProjectModal;
+window.exportProjectExcel = exportProjectExcel;
+window.printProject = printProject;
 setupBBSListeners(); init();
 
 // --- Optimization Logic ---
@@ -1483,4 +1631,64 @@ function optimizeStock(stockLen, pieces) {
     });
     return bars;
 }
+
+
+// Expose functions to window
+window.saveProject = saveProject;
+window.loadProject = loadProject;
+window.deleteProject = deleteProject;
+window.exportProjectJSON = exportProjectJSON;
+window.printProject = printProject;
+window.exportProjectExcel = exportProjectExcel;
+window.importProjectJSON = importProjectJSON;
+window.addDynamicRow = addDynamicRow;
+window.renderCustomShapeInputs = renderCustomShapeInputs;
+window.calculateBBSPreview = calculateBBSPreview;
+
+// --- Dual Unit Toggle ---
+function toggleUnit(toggle) {
+    const oldUnit = appUnit;
+    appUnit = toggle.checked ? UNITS.FT : UNITS.MM;
+
+    // Valid keys for length fields (exclude diameter, nos, price, weight)
+    const lengthKeys = ['L', 'B', 'D', 'H', 'Lx', 'Ly', 'cover', 'spacing', 'ringSpace'];
+
+    // Update all inputs
+    document.querySelectorAll('.bbs-mem-inp').forEach(inp => {
+        const key = inp.getAttribute('data-key');
+
+        // Update Label Text (e.g., "Length (L) mm" -> "Length (L) ft")
+        const label = inp.previousElementSibling; // Assuming label is before input
+        if (label && label.tagName === 'LABEL') {
+            if (appUnit === UNITS.FT) {
+                label.innerText = label.innerText.replace('mm', 'ft').replace('MM', 'FT');
+            } else {
+                label.innerText = label.innerText.replace('ft', 'mm').replace('FT', 'MM');
+            }
+        }
+
+        // Ensure input type allows text for ft/in
+        if (lengthKeys.includes(key) || inp.classList.contains('set-space') || inp.classList.contains('custom-dim')) {
+            inp.type = 'text'; // Allow strings
+
+            // Convert current value using OLD unit context
+            let currentMM = toMM(inp.value, oldUnit);
+            if (currentMM > 0) {
+                inp.value = toDisplay(currentMM);
+            }
+
+            // Update placeholder using OLD unit context
+            if (inp.placeholder && (inp.placeholder.includes('e.g.') || !isNaN(parseInt(inp.placeholder)))) {
+                let phText = inp.placeholder.replace('e.g. ', '');
+                let phMM = toMM(phText, oldUnit);
+                if (phMM > 0) inp.placeholder = 'e.g. ' + toDisplay(phMM);
+            }
+        }
+    });
+
+    // Re-render calculations or preview if needed
+    calculateBBSPreview();
+}
+window.toggleUnit = toggleUnit;
+
 
