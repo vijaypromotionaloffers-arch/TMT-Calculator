@@ -682,6 +682,42 @@ input[type="number"]:focus {
     .card-header h2 {
         font-size: 1.1rem;
     }
+
+    .card-header h2 {
+        font-size: 1.1rem;
+    }
+}
+
+/* Mobile Tabs Scrolling */
+@media (max-width: 900px) {
+    .tabs-nav {
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+        /* Smooth scroll on iOS */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .tabs-nav::-webkit-scrollbar {
+        display: none;
+        /* Chrome/Safari */
+    }
+
+    .tab-btn {
+        flex-shrink: 0;
+        /* Prevent shrinking */
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .header-right {
+        max-width: 100%;
+        overflow: hidden;
+        /* Contain the scrollable tabs */
+    }
 }
 
 /* --- RE-INJECTED MODERN CSS --- */
