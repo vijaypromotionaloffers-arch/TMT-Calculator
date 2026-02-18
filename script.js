@@ -11,6 +11,7 @@ const state = {
     laborRate: 0,
     items: [],
     bbsItems: [],
+    steelItems: [],
     bbsDia: 8,
     bbsShape: 'stirrup-rect'
 };
@@ -253,7 +254,7 @@ const MEMBER_CONFIG = {
             </div>
              <div class="input-group"><label>Slab Thick (mm)</label><input type="number" class="bbs-mem-inp" data-key="D" value="125"></div>
             
-             <div style="margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <div style="margin-bottom:10px;">
                 <label style="font-size:0.9em; font-weight:700; color:var(--primary-color);">Short Span (Main)</label>
                 
                 <div style="margin-top:5px;">
@@ -266,6 +267,12 @@ const MEMBER_CONFIG = {
                     <label style="font-size:0.85em; font-weight:600; color:#666;">Top Bars</label>
                     <div id="slab-main-top-container"></div>
                     <button class="btn-outline-sm" onclick="addDynamicRow('spacingSet', 'slab-main-top-container', true, 10)">+ Add Main Top</button>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <label style="font-size:0.85em; font-weight:600; color:#666;">Top Extra (Support)</label>
+                    <div id="slab-main-top-extra-container"></div>
+                    <button class="btn-outline-sm" onclick="addDynamicRow('spacingSet', 'slab-main-top-extra-container', true, 10)">+ Add Top Extra (0.3L)</button>
                 </div>
             </div>
 
@@ -282,6 +289,12 @@ const MEMBER_CONFIG = {
                     <label style="font-size:0.85em; font-weight:600; color:#666;">Top Bars</label>
                     <div id="slab-dist-top-container"></div>
                     <button class="btn-outline-sm" onclick="addDynamicRow('spacingSet', 'slab-dist-top-container', true, 8)">+ Add Dist Top</button>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <label style="font-size:0.85em; font-weight:600; color:#666;">Top Extra (Support)</label>
+                    <div id="slab-dist-top-extra-container"></div>
+                    <button class="btn-outline-sm" onclick="addDynamicRow('spacingSet', 'slab-dist-top-extra-container', true, 8)">+ Add Top Extra (0.3L)</button>
                 </div>
             </div>
 
@@ -311,6 +324,40 @@ const MEMBER_CONFIG = {
             </div>
             <div id="bbs-custom-inputs"></div>
         `
+    }
+};
+
+const STEEL_CONSTANTS = {
+    DENSITY: 7850, // kg/m3
+    TYPES: {
+        SHS: { label: 'SHS (Square)', inputs: ['Side (mm)', 'Thickness (mm)'] },
+        RHS: { label: 'RHS (Rectangular)', inputs: ['Width (mm)', 'Depth (mm)', 'Thickness (mm)'] },
+        CHS: { label: 'CHS (Circular)', inputs: ['Outer Dia (mm)', 'Thickness (mm)'] },
+        ANGLE: { label: 'Angle (L)', inputs: ['Leg A (mm)', 'Leg B (mm)', 'Thickness (mm)'] },
+        BEAM: { label: 'Beam (I/H)', inputs: ['Depth (mm)', 'Flange Width (mm)', 'Web Thk (mm)', 'Flange Thk (mm)'] },
+        CHANNEL: { label: 'Channel (C)', inputs: ['Depth (mm)', 'Flange Width (mm)', 'Web Thk (mm)', 'Flange Thk (mm)'] },
+        FLAT: { label: 'Flat Bar', inputs: ['Width (mm)', 'Thickness (mm)'] }
+    },
+    PRESETS: {
+        SHS: [
+            { label: 'SC1 - 200x200x10', vals: [200, 10] },
+            { label: 'SC2 - 400x400x12', vals: [400, 12] },
+            { label: '300x300x10', vals: [300, 10] }
+        ],
+        RHS: [
+            { label: 'M1 - 300x150x6', vals: [300, 150, 6] },
+            { label: 'M2 - 200x100x4', vals: [200, 100, 4] },
+            { label: 'M3 - 300x150x10', vals: [300, 150, 10] },
+            { label: 'M4 - 500x200x16', vals: [500, 200, 16] },
+            { label: 'M5 - 300x200x12', vals: [300, 200, 12] },
+            { label: 'M6 - 200x100x4', vals: [200, 100, 4] },
+            { label: 'M7 - 240x120x8', vals: [240, 120, 8] },
+            { label: 'M8 - 145x82x4.8', vals: [145, 82, 4.8] },
+            { label: 'SC3 - 200x100x8', vals: [200, 100, 8] }
+        ],
+        CHS: [
+            { label: 'M9 - 114.3x4.5', vals: [114.3, 4.5] }
+        ]
     }
 };
 
@@ -344,7 +391,9 @@ const els = {
     gstRate: document.getElementById('gst-rate')
 };
 
+
 function init() {
+    console.log("Modern Calculator: init() started");
     attachListeners();
     updateFromRods(0);
     state.gstEnabled = els.gstToggle.checked;
@@ -352,16 +401,20 @@ function init() {
     updateGSTVisibility();
     injectCostSettings();
     injectProjectUI();
+    try {
+        console.log("Calling initSteelTab()");
+        initSteelTab();
+        console.log("initSteelTab() success");
+    } catch (e) {
+        console.error("Error in initSteelTab:", e);
+    }
 }
 
+// Inject Cost Settings
+// ...
 function injectCostSettings() {
-    const container = document.querySelector('.result-panel');
-    if (container) {
-        const div = document.createElement('div');
-        div.style.marginTop = '15px';
-        div.style.paddingTop = '15px';
-        div.style.borderTop = '1px solid #eee';
-        div.innerHTML = `
+    // ... (lines 370-388)
+    div.innerHTML = `
             <h4 style="font-size:0.9em; margin-bottom:10px; color:#555;">Advanced Costs</h4>
             <div class="input-row">
                 <div class="input-group">
@@ -372,23 +425,22 @@ function injectCostSettings() {
                     <label>Binding Wire (kg/ton)</label>
                     <input type="number" id="wire-rate" placeholder="e.g. 10" class="bbs-mem-inp" value="10">
                 </div>
+                <div class="input-group">
+                    <label>Wire Price (₹/kg)</label>
+                    <input type="number" id="wire-price" placeholder="e.g. 80" class="bbs-mem-inp" value="0">
+                </div>
             </div>
         `;
-        container.insertBefore(div, els.gstRow.nextSibling);
+    // ...
+    document.getElementById('wire-price').addEventListener('input', (e) => {
+        state.bindingWirePrice = parseFloat(e.target.value) || 0;
+        renderList();
+    });
+}
 
-        document.getElementById('labor-rate').addEventListener('input', (e) => {
-            state.laborRate = parseFloat(e.target.value) || 0;
-            renderList();
-        });
-        document.getElementById('wire-rate').addEventListener('input', (e) => {
-            state.bindingWireRate = parseFloat(e.target.value) || 0;
-            renderList();
-        });
-    }
-
-    // Inject styles for print
-    const style = document.createElement('style');
-    style.innerHTML = `
+// Inject styles for print
+const style = document.createElement('style');
+style.innerHTML = `
         @media print {
             body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body * { visibility: hidden; }
@@ -412,8 +464,7 @@ function injectCostSettings() {
             .group-header td { background-color: #e5e7eb !important; }
         }
     `;
-    document.head.appendChild(style);
-}
+document.head.appendChild(style);
 
 function attachListeners() {
     els.diaOptions.forEach(opt => {
@@ -572,9 +623,16 @@ function renderList() {
     els.subtotalCost.textContent = '₹' + Math.round(subtotalCost).toLocaleString('en-IN');
 
     // Cost Calc
+    // Cost Calc
     const weightInTons = grandWeight / 1000;
-    const laborCost = weightInTons * state.laborRate;
-    let finalCost = subtotalCost + laborCost;
+    const laborCost = weightInTons * (state.laborRate || 0);
+
+    // Binding Wire Calc
+    const wireKg = weightInTons * (state.bindingWireRate || 10);
+    const wireCost = wireKg * (state.bindingWirePrice || 0);
+
+    // Final Cost
+    let finalCost = subtotalCost + laborCost + wireCost;
     const gstVal = state.gstEnabled ? subtotalCost * (state.gstRate / 100) : 0;
     finalCost += gstVal;
 
@@ -582,6 +640,8 @@ function renderList() {
 
     let extraText = '';
     if (laborCost > 0) extraText += ` + Labor: ₹${formatNum(laborCost)}`;
+    if (wireCost > 0) extraText += ` + Wire: ₹${formatNum(wireCost)} (${formatNum(wireKg)}kg)`;
+
     els.totalCost.innerHTML = '₹' + formatCost(finalCost) + (extraText ? `<div style="font-size:0.6em; font-weight:400; color:#666;">(Incl. GST${extraText})</div>` : '');
 }
 
@@ -697,12 +757,18 @@ function drawShape(shape, params) {
     const canvas = document.getElementById('shape-preview');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+
+    // Resize canvas for better resolution (optional, but good for text)
+    // Only set if not already high-res to avoid loop if we add resize listener later
+    // For now, assume fixed 300x150 but let's treat context width relative
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.font = '10px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     // Config
     const colorConc = '#e5e7eb'; // concrete fill
@@ -710,7 +776,7 @@ function drawShape(shape, params) {
     const colorStirrup = '#ef4444'; // red stirrup
     const colorBar = '#3b82f6'; // blue bars
     const colorInner = '#f59e0b'; // orange inner links
-    const pad = 20;
+    const pad = 25; // Increased padding for labels
 
     function drawBar(cx, cy, d) {
         ctx.beginPath();
@@ -723,6 +789,7 @@ function drawShape(shape, params) {
     if (shape === 'footing') {
         const L = params.L || 1500;
         const B = params.B || 1200;
+        // Use pad for labels (approx 20px space)
         const ratio = Math.min((w - 2 * pad) / L, (h - 2 * pad) / B);
         const dw = L * ratio;
         const dh = B * ratio;
@@ -735,39 +802,27 @@ function drawShape(shape, params) {
         // Draw Grid
         ctx.beginPath();
         ctx.strokeStyle = '#ccc';
-        // X Bars (Vert lines)
-        if (params.xSets) {
-            // simplified grid visual
-            const count = 5;
-            for (let i = 1; i < count; i++) { ctx.moveTo(x + (dw * i / count), y); ctx.lineTo(x + (dw * i / count), y + dh); }
-        }
-        // Y Bars (Horz lines)
-        if (params.ySets) {
-            const count = 5;
-            for (let i = 1; i < count; i++) { ctx.moveTo(x, y + (dh * i / count)); ctx.lineTo(x + dw, y + (dh * i / count)); }
-        }
+        const count = 5;
+        for (let i = 1; i < count; i++) { ctx.moveTo(x + (dw * i / count), y); ctx.lineTo(x + (dw * i / count), y + dh); }
+        for (let i = 1; i < count; i++) { ctx.moveTo(x, y + (dh * i / count)); ctx.lineTo(x + dw, y + (dh * i / count)); }
         ctx.stroke();
 
         ctx.fillStyle = '#666';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(`L: ${L}`, w / 2 - 15, y - 5);
-        ctx.fillText(`B: ${B}`, x + dw + 5, h / 2);
+        ctx.fillText(`L: ${L}`, w / 2, y - 10);
+        ctx.fillText(`B: ${B}`, x + dw + 15, h / 2);
     }
     else if (shape === 'column') {
         const B_real = params.b || 300;
         const D_real = params.D || 450;
-        // Fit to canvas
-        const ratio = Math.min((w - 50) / B_real, (h - 50) / D_real);
+        const ratio = Math.min((w - 60) / B_real, (h - 60) / D_real); // More space
         const dw = B_real * ratio;
         const dh = D_real * ratio;
         const x = (w - dw) / 2;
         const y = (h - dh) / 2;
 
-        // Concrete
         ctx.strokeStyle = colorConcStroke;
         ctx.strokeRect(x, y, dw, dh);
 
-        // Main Stirrup
         const cover = (params.cover || 40) * ratio;
         const stirrupW = dw - 2 * cover;
         const stirrupH = dh - 2 * cover;
@@ -778,90 +833,61 @@ function drawShape(shape, params) {
         ctx.lineWidth = 1.5;
         ctx.strokeRect(sx, sy, stirrupW, stirrupH);
 
-        // Calculate Bars
-        const bars = []; // Flats list of dias
+        const bars = [];
         if (params.vertSets) params.vertSets.forEach(set => {
             for (let i = 0; i < set.no; i++) bars.push(set.dia);
         });
-        // Sort descending to put heavier bars at corners if logic permits, 
-        // but here we just blindly place them
         bars.sort((a, b) => b - a);
 
-        // Placement Logic: 4 Corners first, then distribute remaining
-        const coords = [];
-
-        // Corners
-        coords.push({ x: sx, y: sy }); // TL
-        coords.push({ x: sx + stirrupW, y: sy }); // TR
-        coords.push({ x: sx + stirrupW, y: sy + stirrupH }); // BR
-        coords.push({ x: sx, y: sy + stirrupH }); // BL
+        const coords = [
+            { x: sx, y: sy },
+            { x: sx + stirrupW, y: sy },
+            { x: sx + stirrupW, y: sy + stirrupH },
+            { x: sx, y: sy + stirrupH }
+        ];
 
         const remnant = bars.length - 4;
         if (remnant > 0) {
-            // Distribute on sides. 
-            // Simple logic: Split remnant equally among 4 sides? 
-            // Or usually along longer sides? Let's do perimeter distribution
-            // Side order: Top, Right, Bottom, Left
-            const sideCount = Math.ceil(remnant / 4); // simplistic
-            // For better visual, we distribute along Top/Bottom if width > depth or similar
-            // Let's just go around
-
-            // Top Edge (between TL and TR)
+            // Distribute logic (simplified)
             const topC = Math.ceil(remnant / 4);
             const rightC = Math.ceil((remnant - topC) / 3);
             const botC = Math.ceil((remnant - topC - rightC) / 2);
             const leftC = remnant - topC - rightC - botC;
-
-            // Helper to fill line
             const fillLine = (x1, y1, x2, y2, c) => {
                 for (let k = 1; k <= c; k++) {
-                    coords.push({
-                        x: x1 + (x2 - x1) * (k / (c + 1)),
-                        y: y1 + (y2 - y1) * (k / (c + 1))
-                    });
+                    coords.push({ x: x1 + (x2 - x1) * (k / (c + 1)), y: y1 + (y2 - y1) * (k / (c + 1)) });
                 }
             };
-
             fillLine(sx, sy, sx + stirrupW, sy, topC);
             fillLine(sx + stirrupW, sy, sx + stirrupW, sy + stirrupH, rightC);
             fillLine(sx + stirrupW, sy + stirrupH, sx, sy + stirrupH, botC);
             fillLine(sx, sy + stirrupH, sx, sy, leftC);
         }
 
-        // Draw Bars
-        bars.forEach((dia, i) => {
-            if (i < coords.length) drawBar(coords[i].x, coords[i].y, dia);
-        });
+        bars.forEach((dia, i) => { if (i < coords.length) drawBar(coords[i].x, coords[i].y, dia); });
 
-        // Inner Links (Centers)
+        // Inner sets
         if (params.innerSets) {
             ctx.strokeStyle = colorInner;
             ctx.lineWidth = 1;
             params.innerSets.forEach(set => {
-                // If set has a/b, draw rect centered
                 if (set.a && set.b) {
                     const iw = set.a * ratio;
                     const ih = set.b * ratio;
                     ctx.strokeRect((w - iw) / 2, (h - ih) / 2, iw, ih);
                 } else if (set.a) {
-                    // Just a link? Draw line usually or diamond? Assuming straight link
-                    // Draw horizontal/vertical line centered?
-                    // Let's draw a vertical link of length A centered
                     const len = set.a * ratio;
-                    ctx.beginPath();
-                    ctx.moveTo(w / 2, h / 2 - len / 2);
-                    ctx.lineTo(w / 2, h / 2 + len / 2);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(w / 2, h / 2 - len / 2); ctx.lineTo(w / 2, h / 2 + len / 2); ctx.stroke();
                 }
             });
         }
 
-        ctx.fillStyle = '#666'; ctx.fillText(`${B_real}x${D_real}`, w / 2 - 15, h - 5);
+        ctx.fillStyle = '#666'; ctx.fillText(`${B_real}x${D_real}`, w / 2, h - 10);
     }
     else if (shape === 'beam') {
         const B_real = params.b || 300;
         const D_real = params.D || 450;
-        const ratio = Math.min((w - 50) / B_real, (h - 50) / D_real);
+        const ratio = Math.min((w - 60) / B_real, (h - 60) / D_real);
         const dw = B_real * ratio;
         const dh = D_real * ratio;
         const x = (w - dw) / 2;
@@ -880,128 +906,96 @@ function drawShape(shape, params) {
         ctx.lineWidth = 1.5;
         ctx.strokeRect(sx, sy, sw, sh);
 
-        // Layers
-        // Gap for 2nd layer: 20mm or bar dia (max). We use 25mm as safe visual
         const layerGap = 25 * ratio;
-
-        // Top Bars
-        if (params.topSets) {
-            params.topSets.forEach((set, idx) => {
-                const layerY = sy + (idx * layerGap); // Layer 1 at top, Layer 2 below it
-                // Distribute set.no bars along width sw
-                const count = set.no;
-                if (count > 0) {
-                    if (count === 1) {
-                        drawBar(sx + sw / 2, layerY, set.dia);
-                    } else {
-                        // Distribute
-                        for (let i = 0; i < count; i++) {
-                            const bx = sx + (sw * i / (count - 1));
-                            drawBar(bx, layerY, set.dia);
-                        }
-                    }
-                }
-            });
-        }
-
-        // Bottom Bars
-        if (params.botSets) {
-            params.botSets.forEach((set, idx) => {
-                const layerY = (sy + sh) - (idx * layerGap); // Layer 1 at bottom, Layer 2 above it
-                const count = set.no;
-                if (count > 0) {
-                    if (count === 1) {
-                        drawBar(sx + sw / 2, layerY, set.dia);
-                    } else {
-                        for (let i = 0; i < count; i++) {
-                            const bx = sx + (sw * i / (count - 1));
-                            drawBar(bx, layerY, set.dia);
-                        }
-                    }
-                }
-            });
-        }
-
-        // Inner Rings
+        if (params.topSets) params.topSets.forEach((set, idx) => {
+            const layerY = sy + (idx * layerGap);
+            const count = set.no;
+            if (count > 0) {
+                if (count === 1) drawBar(sx + sw / 2, layerY, set.dia);
+                else for (let i = 0; i < count; i++) drawBar(sx + (sw * i / (count - 1)), layerY, set.dia);
+            }
+        });
+        if (params.botSets) params.botSets.forEach((set, idx) => {
+            const layerY = (sy + sh) - (idx * layerGap);
+            const count = set.no;
+            if (count > 0) {
+                if (count === 1) drawBar(sx + sw / 2, layerY, set.dia);
+                else for (let i = 0; i < count; i++) drawBar(sx + (sw * i / (count - 1)), layerY, set.dia);
+            }
+        });
         if (params.innerSets) {
-            ctx.strokeStyle = colorInner;
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = colorInner; ctx.lineWidth = 1;
             params.innerSets.forEach(set => {
                 if (set.a && set.b) {
-                    const iw = set.a * ratio;
-                    const ih = (set.b || 0) * ratio;
-                    // Centered vertically but what about horz? Centered.
+                    const iw = set.a * ratio; const ih = (set.b || 0) * ratio;
                     ctx.strokeRect((w - iw) / 2, (h - ih) / 2, iw, ih);
                 }
             });
         }
-
-        ctx.fillStyle = '#666'; ctx.fillText(`${B_real}x${D_real}`, w / 2 - 15, h - 5);
+        ctx.fillStyle = '#666'; ctx.fillText(`${B_real}x${D_real}`, w / 2, h - 10);
     }
-    // ... keep existing slab/shape logic ...
     else if (shape === 'slab') {
         const Lx = params.Lx || 3000;
         const Ly = params.Ly || 4000;
-        const ratio = Math.min((w - 30) / Lx, (h - 30) / Ly);
+        const ratio = Math.min((w - 60) / Lx, (h - 60) / Ly);
         const dw = Lx * ratio;
         const dh = Ly * ratio;
         const x = (w - dw) / 2;
         const y = (h - dh) / 2;
 
         ctx.strokeRect(x, y, dw, dh);
-        ctx.beginPath();
-        ctx.strokeStyle = '#ddd';
+        ctx.beginPath(); ctx.strokeStyle = '#ddd';
         ctx.moveTo(x, y); ctx.lineTo(x + dw, y + dh);
         ctx.moveTo(x + dw, y); ctx.lineTo(x, y + dh);
         ctx.stroke();
 
         ctx.fillStyle = '#666';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(`Lx: ${Lx}`, w / 2 - 20, y - 5);
-        ctx.fillText(`Ly: ${Ly}`, x + dw + 5, h / 2);
+        ctx.fillText(`Lx: ${Lx}`, w / 2, y - 10);
+        ctx.fillText(`Ly: ${Ly}`, x + dw + 20, h / 2);
     }
     else if (shape === 'stirrup-rect') {
         const rw = w - 2 * pad;
         const rh = h - 2 * pad;
         ctx.strokeStyle = colorBar;
         ctx.strokeRect(pad, pad, rw, rh);
+        // Hook
         ctx.beginPath();
-        ctx.moveTo(pad + rw / 2, pad);
-        ctx.lineTo(pad + rw / 2 + 10, pad + 10);
-        ctx.moveTo(pad + rw / 2, pad);
-        ctx.lineTo(pad + rw / 2 - 10, pad + 10);
+        ctx.moveTo(pad + rw / 2, pad); ctx.lineTo(pad + rw / 2 + 10, pad + 15);
+        ctx.moveTo(pad + rw / 2, pad); ctx.lineTo(pad + rw / 2 - 10, pad + 15);
         ctx.stroke();
+
         ctx.fillStyle = '#666';
-        ctx.fillText(`A: ${params.a || 'A'}`, w / 2 - 10, h - 5);
-        ctx.fillText(`B: ${params.b || 'B'}`, 5, h / 2);
+        ctx.fillText(`A: ${params.a || 'A'}`, w / 2, h - 10);
+        ctx.fillText(`B: ${params.b || 'B'}`, 10, h / 2); // Left side
     }
     else if (shape === 'stirrup-circ') {
         ctx.beginPath();
         ctx.strokeStyle = colorBar;
-        ctx.arc(w / 2, h / 2, (h / 2) - pad, 0, 2 * Math.PI);
+        const r = (Math.min(w, h) / 2) - pad;
+        ctx.arc(w / 2, h / 2, r, 0, 2 * Math.PI);
         ctx.stroke();
         ctx.fillStyle = '#666';
-        ctx.fillText(`D: ${params.d_member || 'D'}`, w / 2 - 10, h / 2 + 5);
+        ctx.fillText(`D: ${params.d_member || 'D'}`, w / 2, h - 10);
     }
     else if (shape === 'l-bar') {
         ctx.beginPath();
         ctx.strokeStyle = colorBar;
-        ctx.moveTo(pad + 20, pad);
-        ctx.lineTo(pad + 20, h - pad); // Vert
-        ctx.lineTo(w - pad, h - pad); // Horz
+        // Schematic L shape
+        const lx = pad + 20; const ly = pad;
+        const lb = w - pad; const lh = h - pad;
+        ctx.moveTo(lx, ly); ctx.lineTo(lx, lh); ctx.lineTo(lb, lh);
         ctx.stroke();
         ctx.fillStyle = '#666';
-        ctx.fillText(`A: ${params.a || 'A'}`, pad, h / 2);
-        ctx.fillText(`B: ${params.b || 'B'}`, w / 2, h - 5);
+        ctx.fillText(`A: ${params.a || 'A'}`, lx - 10, h / 2);
+        ctx.fillText(`B: ${params.b || 'B'}`, w / 2 + 10, h - 10);
     }
     else if (shape === 'straight') {
         ctx.beginPath();
         ctx.strokeStyle = colorBar;
-        ctx.moveTo(pad, h / 2);
-        ctx.lineTo(w - pad, h / 2);
+        ctx.moveTo(pad, h / 2); ctx.lineTo(w - pad, h / 2);
         ctx.stroke();
         ctx.fillStyle = '#666';
-        ctx.fillText(`L: ${params.len || 'Len'}`, w / 2 - 10, h / 2 - 10);
+        ctx.fillText(`L: ${params.len || 'Len'}`, w / 2, h / 2 - 15);
     }
 }
 
@@ -1249,8 +1243,10 @@ function calculateBBSPreview() {
     } else if (type === 'slab') {
         inputs.mainBotSets = collectSets('#slab-main-bot-container .dynamic-set');
         inputs.mainTopSets = collectSets('#slab-main-top-container .dynamic-set');
+        inputs.mainTopExtraSets = collectSets('#slab-main-top-extra-container .dynamic-set');
         inputs.distBotSets = collectSets('#slab-dist-bot-container .dynamic-set');
         inputs.distTopSets = collectSets('#slab-dist-top-container .dynamic-set');
+        inputs.distTopExtraSets = collectSets('#slab-dist-top-extra-container .dynamic-set');
     }
     if (type === 'shape') {
         document.querySelectorAll('.custom-dim').forEach(i => inputs[i.dataset.key] = parseFloat(i.value) || 0);
@@ -1279,6 +1275,117 @@ function generateMemberItems(type, inp, count) {
     const pushItem = (name, shape, dia, cutLen, no) => {
         const wt = (dia * dia / 162) * (cutLen / 1000) * no * count;
         if (wt > 0) items.push({ name, shape, dia, cutLen: cutLen / 1000, qty: no * count, weight: wt });
+    };
+    const MEMBER_CONFIG = {
+        footing: {
+            inputs: [
+                { id: 'l', label: 'Length (L)', type: 'number', placeholder: 'e.g. 1500' },
+                { id: 'b', label: 'Breadth (B)', type: 'number', placeholder: 'e.g. 1200' },
+                { id: 'spacing', label: 'Spacing', type: 'number', placeholder: 'e.g. 150' }
+            ]
+        },
+        column: {
+            inputs: [
+                { id: 'h', label: 'Height', type: 'number', placeholder: 'e.g. 3000' },
+                { id: 'l', label: 'Length', type: 'number', placeholder: 'e.g. 450' },
+                { id: 'b', label: 'Breadth', type: 'number', placeholder: 'e.g. 230' },
+                { id: 'bars', label: 'No. of Bars', type: 'number', placeholder: 'e.g. 4' } // Main bars count
+            ]
+        },
+        beam: {
+            inputs: [
+                { id: 'l', label: 'Clear Span', type: 'number', placeholder: 'e.g. 4000' },
+                { id: 'bw', label: 'Beam Width', type: 'number', placeholder: 'e.g. 230' },
+                { id: 'd', label: 'Beam Depth', type: 'number', placeholder: 'e.g. 450' },
+                { id: 'top-bars', label: 'Top Bars', type: 'number', placeholder: 'e.g. 2' },
+                { id: 'bot-bars', label: 'Bottom Bars', type: 'number', placeholder: 'e.g. 3' }
+            ]
+        },
+        slab: {
+            inputs: [
+                { id: 'lx', label: 'Short Span (Lx)', type: 'number', placeholder: 'e.g. 3000' },
+                { id: 'ly', label: 'Long Span (Ly)', type: 'number', placeholder: 'e.g. 4000' },
+                { id: 'spacing', label: 'Spacing', type: 'number', placeholder: 'e.g. 150' },
+                { id: 'main-top-extra', label: 'Top Extra (Support) - Short', type: 'number', placeholder: 'e.g. 0 (Sets)' },
+                { id: 'dist-top-extra', label: 'Top Extra (Support) - Long', type: 'number', placeholder: 'e.g. 0 (Sets)' }
+            ]
+        },
+        stirrups: {
+            inputs: [
+                { id: 'a', label: 'Side A', type: 'number', placeholder: 'e.g. 230' },
+                { id: 'b', label: 'Side B', type: 'number', placeholder: 'e.g. 450' },
+                { id: 'spacing', label: 'Spacing', type: 'number', placeholder: 'e.g. 150' }, // For qty calc
+                { id: 'len-span', label: 'Span Length', type: 'number', placeholder: 'e.g. 4000' } // For qty calc
+            ]
+        },
+        shape: {
+            inputs: [
+                { id: 'a', label: 'A (mm)', type: 'number', placeholder: '0' },
+                { id: 'b', label: 'B (mm)', type: 'number', placeholder: '0' },
+                { id: 'c', label: 'C (mm)', type: 'number', placeholder: '0' },
+                { id: 'd', label: 'D (mm)', type: 'number', placeholder: '0' },
+                { id: 'e', label: 'E (mm)', type: 'number', placeholder: '0' },
+                { id: 'r', label: 'Bend Ded. (d)', type: 'number', placeholder: 'e.g. 2 (for 90°)' } // in diameters
+            ]
+        }
+    };
+
+    const STEEL_CONSTANTS = {
+        DENSITY: 7850, // kg/m3
+        TYPES: {
+            SHS: { label: 'SHS (Square)', inputs: ['Side (mm)', 'Thickness (mm)'] },
+            RHS: { label: 'RHS (Rectangular)', inputs: ['Width (mm)', 'Depth (mm)', 'Thickness (mm)'] },
+            CHS: { label: 'CHS (Circular)', inputs: ['Outer Dia (mm)', 'Thickness (mm)'] },
+            ANGLE: { label: 'Angle (L)', inputs: ['Leg A (mm)', 'Leg B (mm)', 'Thickness (mm)'] },
+            BEAM: { label: 'Beam (I/H)', inputs: ['Depth (mm)', 'Flange Width (mm)', 'Web Thk (mm)', 'Flange Thk (mm)'] },
+            CHANNEL: { label: 'Channel (C)', inputs: ['Depth (mm)', 'Flange Width (mm)', 'Web Thk (mm)', 'Flange Thk (mm)'] },
+            FLAT: { label: 'Flat Bar', inputs: ['Width (mm)', 'Thickness (mm)'] }
+        },
+        PRESETS: {
+            SHS: [
+                { label: 'SC1 - 200x200x10', vals: [200, 10] },
+                { label: 'SC2 - 400x400x12', vals: [400, 12] },
+                { label: '300x300x10', vals: [300, 10] }
+            ],
+            RHS: [
+                { label: 'M1 - 300x150x6', vals: [300, 150, 6] },
+                { label: 'M2 - 200x100x4', vals: [200, 100, 4] },
+                { label: 'M3 - 300x150x10', vals: [300, 150, 10] },
+                { label: 'M4 - 500x200x16', vals: [500, 200, 16] },
+                { label: 'M5 - 300x200x12', vals: [300, 200, 12] },
+                { label: 'M6 - 200x100x4', vals: [200, 100, 4] },
+                { label: 'M7 - 240x120x8', vals: [240, 120, 8] },
+                { label: 'M8 - 145x82x4.8', vals: [145, 82, 4.8] },
+                { label: 'SC3 - 200x100x8', vals: [200, 100, 8] }
+            ],
+            CHS: [
+                { label: 'M9 - 114.3x4.5', vals: [114.3, 4.5] }
+            ]
+        }
+    };
+
+    const BBS_SHAPE_CONFIG = {
+        // Custom shape names
+        'L': 'L-Shape',
+        'C': 'C-Shape',
+        'U': 'U-Shape',
+        'BOX': 'Rect. Stirrup'
+    };
+
+    let state = {
+        diameter: 8,
+        length: 12,
+        rods: 0,
+        weight: 0,
+        price: 0,
+        items: [], // Cost Estimator items
+        bbsItems: [], // BBS Items
+        steelItems: [], // Structural Steel Items
+        laborRate: 0,
+        bindingWireRate: 10,
+        bindingWirePrice: 0,
+        gstEnabled: false,
+        gstRate: 18
     };
     if (type === 'footing') {
         const bob = Math.max(0, inp.D - 2 * inp.cover);
@@ -1378,6 +1485,28 @@ function generateMemberItems(type, inp, count) {
                 const cutDist = inp.Ly - 2 * inp.cover + (2 * 10 * set.dia);
                 const noDist = Math.floor(inp.Lx / set.space) + 1;
                 pushItem(`Dist Top (Long) Set ${idx + 1}`, 'Straight', set.dia, cutDist, noDist);
+            });
+        }
+        // Top Extras (0.3L)
+        if (inp.mainTopExtraSets) {
+            inp.mainTopExtraSets.forEach((set, idx) => {
+                // Length is 0.3 * Lx (Span) each side? Usually it's over support.
+                // Assuming it's a single bar of length 0.3Lx placed over support? 
+                // Or total length? 
+                // Standard: 0.3L from support face. If continuous, 0.3L each side.
+                // Let's assume conservatively 0.3L + anchorage?
+                // Simplest interpretation: It's a straight bar of length 0.3 * Span
+                const cutExtra = 0.3 * inp.Lx;
+                // No is based on opposite span
+                const noExtra = Math.floor(inp.Ly / set.space) + 1;
+                pushItem(`Main Top Extra (0.3L) Set ${idx + 1}`, 'Straight', set.dia, cutExtra, noExtra);
+            });
+        }
+        if (inp.distTopExtraSets) {
+            inp.distTopExtraSets.forEach((set, idx) => {
+                const cutExtra = 0.3 * inp.Ly;
+                const noExtra = Math.floor(inp.Lx / set.space) + 1;
+                pushItem(`Dist Top Extra (0.3L) Set ${idx + 1}`, 'Straight', set.dia, cutExtra, noExtra);
             });
         }
     } else if (type === 'shape') {
@@ -1537,7 +1666,40 @@ window.exportCSV = exportCSV;
 window.openProjectModal = openProjectModal;
 window.exportProjectExcel = exportProjectExcel;
 window.printProject = printProject;
-setupBBSListeners(); init();
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM Loaded. Starting App...");
+
+    // Safety check for critical functions
+    if (typeof setupBBSListeners !== 'function') console.error("setupBBSListeners is missing!");
+    if (typeof init !== 'function') console.error("init is missing!");
+
+    try {
+        setupBBSListeners();
+        console.log("setupBBSListeners done");
+    } catch (e) {
+        console.error("Critical Error in setupBBSListeners:", e);
+    }
+
+    try {
+        init();
+        console.log("init done");
+    } catch (e) {
+        console.error("Critical Error in init:", e);
+    }
+
+    // Force Steel Tab Init again just in case init() failed halfway
+    try {
+        if (typeof initSteelTab === 'function') {
+            initSteelTab();
+        } else {
+            console.error("initSteelTab function missing!");
+        }
+    } catch (e) {
+        console.error("Manual initSteelTab call failed:", e);
+    }
+});
 
 // --- Optimization Logic ---
 
@@ -1658,12 +1820,18 @@ function toggleUnit(toggle) {
         const key = inp.getAttribute('data-key');
 
         // Update Label Text (e.g., "Length (L) mm" -> "Length (L) ft")
-        const label = inp.previousElementSibling; // Assuming label is before input
+        // Check previous sibling first (standard), then closest input-group label (nested)
+        let label = inp.previousElementSibling;
+        if (!label || label.tagName !== 'LABEL') {
+            const group = inp.closest('.input-group');
+            if (group) label = group.querySelector('label');
+        }
+
         if (label && label.tagName === 'LABEL') {
             if (appUnit === UNITS.FT) {
-                label.innerText = label.innerText.replace('mm', 'ft').replace('MM', 'FT');
+                label.innerText = label.innerText.replace('(mm)', '(ft)').replace(' mm', ' ft').replace('MM', 'FT');
             } else {
-                label.innerText = label.innerText.replace('ft', 'mm').replace('FT', 'MM');
+                label.innerText = label.innerText.replace('(ft)', '(mm)').replace(' ft', ' mm').replace('FT', 'MM');
             }
         }
 
@@ -1690,5 +1858,340 @@ function toggleUnit(toggle) {
     calculateBBSPreview();
 }
 window.toggleUnit = toggleUnit;
+
+
+
+
+/* =========================================
+   STRUCTURAL STEEL LOGIC (REBUILT)
+   ========================================= */
+
+// Explicitly attach to window to avoid scope issues
+window.STEEL_CONSTANTS = {
+    DENSITY: 7850, // kg/m3
+    TYPES: {
+        SHS: { label: 'SHS (Square)', inputs: ['Side (mm)', 'Thickness (mm)'] },
+        RHS: { label: 'RHS (Rectangular)', inputs: ['Width (mm)', 'Depth (mm)', 'Thickness (mm)'] },
+        CHS: { label: 'CHS (Circular)', inputs: ['Outer Dia (mm)', 'Thickness (mm)'] },
+        ANGLE: { label: 'Angle (L)', inputs: ['Leg A (mm)', 'Leg B (mm)', 'Thickness (mm)'] },
+        BEAM: { label: 'Beam (I/H)', inputs: ['Depth (mm)', 'Flange Width (mm)', 'Web Thk (mm)', 'Flange Thk (mm)'] },
+        CHANNEL: { label: 'Channel (C)', inputs: ['Depth (mm)', 'Flange Width (mm)', 'Web Thk (mm)', 'Flange Thk (mm)'] },
+        FLAT: { label: 'Flat Bar', inputs: ['Width (mm)', 'Thickness (mm)'] }
+    },
+    PRESETS: {
+        SHS: [
+            { label: 'SC1 - 200x200x10', vals: [200, 10] },
+            { label: 'SC2 - 400x400x12', vals: [400, 12] },
+            { label: '300x300x10', vals: [300, 10] }
+        ],
+        RHS: [
+            { label: 'M1 - 300x150x6', vals: [300, 150, 6] },
+            { label: 'M2 - 200x100x4', vals: [200, 100, 4] },
+            { label: 'M3 - 300x150x10', vals: [300, 150, 10] },
+            { label: 'M4 - 500x200x16', vals: [500, 200, 16] },
+            { label: 'M5 - 300x200x12', vals: [300, 200, 12] },
+            { label: 'M6 - 200x100x4', vals: [200, 100, 4] },
+            { label: 'M7 - 240x120x8', vals: [240, 120, 8] },
+            { label: 'M8 - 145x82x4.8', vals: [145, 82, 4.8] },
+            { label: 'SC3 - 200x100x8', vals: [200, 100, 8] }
+        ],
+        CHS: [
+            { label: 'M9 - 114.3x4.5', vals: [114.3, 4.5] }
+        ]
+    }
+};
+
+function initSteelTab() {
+    console.log("initSteelTab: Starting initialization...");
+    const typeSelect = document.getElementById('steel-type');
+    const presetSelect = document.getElementById('steel-preset');
+    const addBtn = document.getElementById('btn-add-steel');
+    const clearBtn = document.getElementById('btn-clear-steel');
+    const container = document.getElementById('steel-dims-container');
+
+    if (!typeSelect || !presetSelect || !addBtn || !clearBtn || !container) {
+        console.error("initSteelTab: CRITICAL - Missing DOM elements", {
+            typeSelect, presetSelect, addBtn, clearBtn, container
+        });
+        return;
+    }
+
+    // Remove existing listeners to prevent duplicates
+    const cloneType = typeSelect.cloneNode(true);
+    typeSelect.parentNode.replaceChild(cloneType, typeSelect);
+    const newTypeSelect = document.getElementById('steel-type');
+
+    newTypeSelect.addEventListener('change', () => {
+        console.log("Steel Type Changed:", newTypeSelect.value);
+        renderSteelInputs();
+        updateSteelPresets();
+    });
+
+    const clonePreset = presetSelect.cloneNode(true);
+    presetSelect.parentNode.replaceChild(clonePreset, presetSelect);
+    const newPresetSelect = document.getElementById('steel-preset');
+
+    newPresetSelect.addEventListener('change', () => {
+        applySteelPreset();
+    });
+
+    // Re-attach button listeners
+    addBtn.replaceWith(addBtn.cloneNode(true));
+    document.getElementById('btn-add-steel').addEventListener('click', addSteelItem);
+
+    clearBtn.replaceWith(clearBtn.cloneNode(true));
+    document.getElementById('btn-clear-steel').addEventListener('click', clearSteelItems);
+
+    console.log("initSteelTab: Listeners attached. Rendering initial inputs...");
+    renderSteelInputs();
+    updateSteelPresets();
+    console.log("initSteelTab: Initialization complete.");
+}
+
+function renderSteelInputs() {
+    const typeEl = document.getElementById('steel-type');
+    if (!typeEl) return;
+    const type = typeEl.value;
+    const container = document.getElementById('steel-dims-container');
+
+    // Explicit check for constants
+    const CONSTANTS = window.STEEL_CONSTANTS || STEEL_CONSTANTS;
+    if (!CONSTANTS) {
+        console.error("STEEL_CONSTANTS not found!");
+        return;
+    }
+
+    const config = CONSTANTS.TYPES[type];
+
+    container.innerHTML = '';
+
+    if (!config) {
+        console.error("Config not found for type:", type);
+        return;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'input-row';
+
+    config.inputs.forEach((label, index) => {
+        const group = document.createElement('div');
+        group.className = 'input-group';
+        group.innerHTML = `
+            <label>${label}</label>
+            <input type="number" class="steel-dim-inp" data-index="${index}" placeholder="0" step="any">
+        `;
+        row.appendChild(group);
+    });
+
+    container.appendChild(row);
+    console.log("renderSteelInputs: Rendered inputs for", type);
+}
+
+function updateSteelPresets() {
+    const type = document.getElementById('steel-type').value;
+    const presetSelect = document.getElementById('steel-preset');
+    const CONSTANTS = window.STEEL_CONSTANTS || STEEL_CONSTANTS;
+
+    if (!CONSTANTS) return;
+    const presets = CONSTANTS.PRESETS[type] || [];
+
+    presetSelect.innerHTML = '<option value="">-- Custom Size --</option>';
+
+    presets.forEach((p, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = p.label;
+        presetSelect.appendChild(opt);
+    });
+}
+
+function applySteelPreset() {
+    const type = document.getElementById('steel-type').value;
+    const idx = document.getElementById('steel-preset').value;
+    const CONSTANTS = window.STEEL_CONSTANTS || STEEL_CONSTANTS;
+
+    if (idx === '') return;
+
+    const preset = CONSTANTS.PRESETS[type][idx];
+    const inputs = document.querySelectorAll('.steel-dim-inp');
+
+    if (preset && inputs) {
+        preset.vals.forEach((val, i) => {
+            if (inputs[i]) inputs[i].value = val;
+        });
+    }
+}
+
+function calculateSteelProperties(type, dims, length) {
+    let area = 0; // Cross-sectional area in mm2
+    let surfaceParams = 0; // Perimeter for surface area in mm
+    const CONSTANTS = window.STEEL_CONSTANTS || STEEL_CONSTANTS;
+
+    // Dims map based on type inputs order
+    const d1 = parseFloat(dims[0]) || 0;
+    const d2 = parseFloat(dims[1]) || 0;
+    const d3 = parseFloat(dims[2]) || 0;
+    const d4 = parseFloat(dims[3]) || 0;
+
+    if (type === 'SHS') {
+        const side = d1;
+        const thk = d2;
+        const outer = side * side;
+        const inner = (side - 2 * thk) * (side - 2 * thk);
+        area = outer - inner;
+        surfaceParams = 4 * side;
+    } else if (type === 'RHS') {
+        const w = d1;
+        const d = d2;
+        const thk = d3;
+        const outer = w * d;
+        const inner = (w - 2 * thk) * (d - 2 * thk);
+        area = outer - inner;
+        surfaceParams = 2 * (w + d);
+    } else if (type === 'CHS') {
+        const od = d1;
+        const thk = d2;
+        const id = od - 2 * thk;
+        area = (Math.PI / 4) * (od * od - id * id);
+        surfaceParams = Math.PI * od;
+    } else if (type === 'ANGLE') {
+        const a = d1;
+        const b = d2;
+        const thk = d3;
+        area = (a * thk) + ((b - thk) * thk);
+        surfaceParams = 2 * (a + b);
+    } else if (type === 'FLAT') {
+        const w = d1;
+        const t = d2;
+        area = w * t;
+        surfaceParams = 2 * (w + t);
+    } else if (type === 'BEAM' || type === 'CHANNEL') {
+        const depth = d1;
+        const width = d2;
+        const webThk = d3;
+        const flgThk = d4;
+
+        if (type === 'BEAM') {
+            area = (2 * width * flgThk) + ((depth - 2 * flgThk) * webThk);
+            surfaceParams = (2 * width) + (2 * depth) + (2 * (width - webThk));
+        } else {
+            area = (2 * width * flgThk) + ((depth - 2 * flgThk) * webThk);
+            surfaceParams = (2 * depth) + (4 * width) - (2 * webThk);
+        }
+    }
+
+    const weight = (area > 0 ? (area / 1000000) * length * CONSTANTS.DENSITY : 0);
+    const surfArea = (surfaceParams > 0 ? (surfaceParams / 1000) * length : 0);
+
+    return { weight, surfArea };
+}
+
+
+function addSteelItem() {
+    const type = document.getElementById('steel-type').value;
+    const nameInput = document.getElementById('steel-name');
+    const len = parseFloat(document.getElementById('steel-len').value) || 0;
+    const qty = parseFloat(document.getElementById('steel-qty').value) || 0;
+    const price = parseFloat(document.getElementById('steel-price').value) || 0;
+    const CONSTANTS = window.STEEL_CONSTANTS || STEEL_CONSTANTS;
+
+    // Get dimensions
+    const inputs = document.querySelectorAll('.steel-dim-inp');
+    const dims = Array.from(inputs).map(i => parseFloat(i.value) || 0);
+
+    if (len <= 0 || qty <= 0) {
+        alert("Please enter valid length and quantity.");
+        return;
+    }
+
+    const props = calculateSteelProperties(type, dims, len);
+    const totalWeight = props.weight * qty;
+    const totalArea = props.surfArea * qty;
+    const totalCost = totalWeight * price;
+
+    // Generate Description
+    let desc = '';
+    const customName = nameInput ? nameInput.value.trim() : '';
+
+    if (customName) {
+        desc = `<b>${customName}</b> (${type} ${dims.join('x')})`;
+    } else {
+        const presetSelect = document.getElementById('steel-preset');
+        const presetIdx = presetSelect ? presetSelect.value : '';
+
+        if (presetIdx !== '' && CONSTANTS.PRESETS[type] && CONSTANTS.PRESETS[type][presetIdx]) {
+            desc = CONSTANTS.PRESETS[type][presetIdx].label;
+        } else {
+            desc = `${type} ${dims.join('x')}`;
+        }
+    }
+
+    state.steelItems.push({
+        id: Date.now(),
+        type,
+        desc,
+        dims,
+        len,
+        qty,
+        unitWt: props.weight,
+        totalWt: totalWeight,
+        totalArea,
+        cost: totalCost
+    });
+
+    renderSteelList();
+}
+
+
+function clearSteelItems() {
+    state.steelItems = [];
+    const nameInput = document.getElementById('steel-name');
+    if (nameInput) nameInput.value = '';
+    renderSteelList();
+}
+
+function removeSteelItem(id) {
+    state.steelItems = state.steelItems.filter(i => i.id !== id);
+    renderSteelList();
+}
+
+function renderSteelList() {
+    const list = document.getElementById('steel-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    let grandWt = 0;
+    let grandArea = 0;
+    let grandCost = 0;
+
+    if (state.steelItems.length === 0) {
+        list.innerHTML = '<tr class="empty-state"><td colspan="6">No steel items added.</td></tr>';
+    } else {
+        state.steelItems.forEach(item => {
+            grandWt += item.totalWt;
+            grandArea += item.totalArea;
+            grandCost += item.cost;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><b>${item.desc}</b></td>
+                <td>${item.dims.join('x')}</td>
+                <td>${item.qty} &times; ${item.len}m</td>
+                <td class="text-right">${formatNum(item.totalWt)} kg</td>
+                <td class="text-right">${formatNum(item.totalArea)} m²</td>
+                <td class="text-right"><button class="action-btn" onclick="removeSteelItem(${item.id})">&times;</button></td>
+            `;
+            list.appendChild(tr);
+        });
+    }
+
+    const elTotalWt = document.getElementById('steel-total-weight');
+    const elTotalArea = document.getElementById('steel-total-area');
+    const elTotalCost = document.getElementById('steel-total-cost');
+
+    if (elTotalWt) elTotalWt.textContent = formatNum(grandWt) + ' kg';
+    if (elTotalArea) elTotalArea.textContent = formatNum(grandArea) + ' m²';
+    if (elTotalCost) elTotalCost.innerHTML = '₹' + formatCost(grandCost);
+}
 
 
